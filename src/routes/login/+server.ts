@@ -16,11 +16,6 @@ type User = {
     email: string;
 }
 
-//load all users from the database
-export const load: ServerLoad = async () => {
-    
-}
-
 export async function POST({request}) {
     const data = await request.json();
     const username = data.username;
