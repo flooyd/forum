@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { token, createThreadModal, threads } from '../../lib/stores';
+	import { token, createThreadModal, threads, user } from '../../lib/stores';
 	let title = '';
 
     const createThread = async () => {
@@ -14,8 +14,12 @@
 
         if (response.ok) {
             // Handle successful thread creation
-            const newThread = await response.json();
+            const data = await response.json();
+			const newThread = data.thread[0];
+			newThread.avatar = $user.avatar;
+			newThread.displayName = $user.displayName;
             $threads = [...$threads, newThread];
+			console.log($threads);
             closeModal();
         } else {
             // Handle error

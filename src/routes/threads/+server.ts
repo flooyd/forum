@@ -14,7 +14,7 @@ export const POST = async ({ request, locals }) => {
 
     // Fetch the user from the database
     const user = await db.query.usersTable.findFirst({
-        where: (usersTable, { eq }) => eq(usersTable.id, Number(locals.user!.id))
+        where: (usersTable: { id: any; }, { eq }: any) => eq(usersTable.id, Number(locals.user!.id))
     });
 
     //create thread

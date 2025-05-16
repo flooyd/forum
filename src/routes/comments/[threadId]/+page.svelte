@@ -18,7 +18,9 @@
 		if (response.ok) {
 			const data = await response.json();
 			data.comment[0].avatar = $user.avatar;
+			data.comment[0].displayName = $user.displayName;
 			comments = [...comments, data.comment[0]];
+			console.log(comments);
 			newComment = '';
 		} else {
 			console.error('Failed to add comment');

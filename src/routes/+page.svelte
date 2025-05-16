@@ -25,13 +25,7 @@
 		if (response.ok) {
 			const data = await response.json();
 			$threads = data.threads;
-			$threads = $threads.map((thread) => {
-				return {
-					...thread,
-					createdAt: new Date(thread.createdAt).toLocaleString(),
-					updatedAt: new Date(thread.updatedAt).toLocaleString()
-				};
-			});
+			console.log($threads);
 		} else {
 			console.error('Failed to fetch threads');
 		}
@@ -60,8 +54,8 @@ This is the forum site xD.
 						<p class="creator"><img src={thread.avatar} alt="thread creator avatar"/> {thread.displayName}</p>
 						<p>Replies: {thread.commentCount}</p>
 					</div>
-					<p>Created at: {thread.createdAt}</p>
-					<p>Updated at: {thread.updatedAt}</p>
+					<p>Created at: {new Date(thread.createdAt).toLocaleString()}</p>
+					<p>Updated at: {new Date(thread.updatedAt).toLocaleString()}</p>
 				</button>
 			{/each}
 		</div>
