@@ -151,7 +151,7 @@
 		color: white;
 	}
 	:global(label) {
-		color: black;
+		color: white;
 		font-weight: bold;
 	}
 	:global(.creator) {
