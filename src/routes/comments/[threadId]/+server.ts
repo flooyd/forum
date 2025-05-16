@@ -26,7 +26,7 @@ export const GET = async ({ locals, params }) => {
 
     //get the thread title
     const thread = await db.query.threadsTable.findFirst({
-        where: (threadsTable, { eq }) => eq(threadsTable.id, Number(threadId))
+        where: (threadsTable: { id: any; }, { eq }: any) => eq(threadsTable.id, Number(threadId))
     });
 
     // check if the thread is found

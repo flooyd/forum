@@ -28,7 +28,7 @@ export async function POST({request}) {
     if (loginOrRegister === 'login') {
         //login user
         const user = await db.query.usersTable.findFirst({
-            where: (usersTable, { eq }) => eq(usersTable.username, username)
+            where: (usersTable: { username: any; }, { eq }: any) => eq(usersTable.username, username)
         });
 
         if (!user) {
@@ -60,10 +60,10 @@ export async function POST({request}) {
         //register user
         //check if user or email already exists
         const userExists = await db.query.usersTable.findFirst({
-            where: (usersTable, { eq }) => eq(usersTable.username, username)
+            where: (usersTable: { username: any; }, { eq }: any) => eq(usersTable.username, username)
         });
         const emailExists = await db.query.usersTable.findFirst({
-            where: (usersTable, { eq }) => eq(usersTable.email, email)
+            where: (usersTable: { email: any; }, { eq }: any) => eq(usersTable.email, email)
         });
 
         if (userExists || emailExists) {

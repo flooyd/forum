@@ -1,11 +1,18 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
+import {drizzle as drizzleNeon} from 'drizzle-orm/neon-http';
 import postgres from 'postgres';
 import * as schema from './schema';
 import { env } from '$env/dynamic/private';
+import { neon } from '@neondatabase/serverless';
 
-if(!env.SECRET) throw new Error('SECRET is not set');
-if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+let db: any;
+if(env.DATABASE_URL.includes('neon')) {
+    const client = neon(env.DATABASE_URL!)
+    db = drizzleNeon(client, { schema });
+    
+} else {
+    const client = postgres(env.DATABASE_URL);
+    db = drizzle(client, { schema });
+}
 
-const client = postgres(env.DATABASE_URL);
-
-export const db = drizzle(client, { schema });
+export { db };
