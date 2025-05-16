@@ -1,0 +1,1 @@
+ALTER TABLE "comments" RENAME COLUMN "is_report" TO "is_reported";
