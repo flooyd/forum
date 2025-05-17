@@ -37,6 +37,7 @@ export const PUT = async ({ request, locals }) => {
 
         if (displayName) {
             updateData.displayName = displayName;
+        }
         
         // Always update the updatedAt timestamp
         updateData.updatedAt = new Date();
