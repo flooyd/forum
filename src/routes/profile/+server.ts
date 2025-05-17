@@ -34,6 +34,9 @@ export const PUT = async ({ request, locals }) => {
             // You might want to add validation for avatar URL/data here
             updateData.avatar = avatar;
         }
+
+        if (displayName) {
+            updateData.displayName = displayName;
         
         // Always update the updatedAt timestamp
         updateData.updatedAt = new Date();
