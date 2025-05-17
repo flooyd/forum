@@ -5,6 +5,7 @@ import { json, type ServerLoad } from '@sveltejs/kit';
 import jwt from 'jsonwebtoken';
 import { SECRET } from '$env/static/private';
 import { usersTable } from '$lib/server/db/schema.js';
+import { eq } from 'drizzle-orm';
 
 type User = {
     username: string;
@@ -24,11 +25,10 @@ export async function POST({request}) {
     const displayName = data.displayName;
     //check query params for login or register
     const loginOrRegister = data.loginOrRegister;
-    //check if login or register
+
     if (loginOrRegister === 'login') {
-        //login user
         const user = await db.query.usersTable.findFirst({
-            where: (usersTable: { username: any; }, { eq }: any) => eq(usersTable.username, username)
+            where: eq(usersTable.username, username)
         });
 
         if (!user) {
@@ -57,7 +57,6 @@ export async function POST({request}) {
             user
         });
     } else {
-        //register user
         //check if user or email already exists
         const userExists = await db.query.usersTable.findFirst({
             where: (usersTable: { username: any; }, { eq }: any) => eq(usersTable.username, username)
@@ -75,7 +74,6 @@ export async function POST({request}) {
 
         //hash password
         const hashedPassword = await bcrypt.hash(password, 10);
-        //create user
         const user: User = {
             username,
             displayName,
@@ -86,7 +84,6 @@ export async function POST({request}) {
             email
         };
 
-        //insert user into database
         await db.insert(usersTable).values({
             username: user.username,
             displayName: user.displayName,

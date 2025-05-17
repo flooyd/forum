@@ -1,0 +1,1 @@
+ALTER TABLE "comments" ALTER COLUMN "is_reported" DROP NOT NULL;

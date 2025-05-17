@@ -3,7 +3,6 @@ import { usersTable } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 export const PUT = async ({ request, locals }) => {
-    // Check if the user is authenticated
     if (!locals.user) {
         return new Response(JSON.stringify({ success: false, message: 'User not authenticated' }), {
             status: 401,
@@ -12,11 +11,9 @@ export const PUT = async ({ request, locals }) => {
     }
 
     try {
-        // Parse request body
         const body = await request.json();
         const { displayName, avatar } = body;
         
-        // Check if at least one field to update is provided
         if (!displayName && !avatar) {
             return new Response(JSON.stringify({ 
                 success: false, 
@@ -27,11 +24,9 @@ export const PUT = async ({ request, locals }) => {
             });
         }
 
-        // Build update object dynamically based on provided fields
         const updateData: any = {};
         
         if (avatar) {
-            // You might want to add validation for avatar URL/data here
             updateData.avatar = avatar;
         }
         

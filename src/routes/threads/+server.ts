@@ -1,7 +1,7 @@
 //import db
 import { db } from '$lib/server/db';
 import { usersTable, threadsTable, commentsTable } from '$lib/server/db/schema.js';
-import { eq, desc, sql } from 'drizzle-orm';  // Update imports to include sql
+import { eq, desc, sql } from 'drizzle-orm';
 
 export const POST = async ({ request, locals }) => {
     // Check if the user is authenticated
@@ -14,8 +14,9 @@ export const POST = async ({ request, locals }) => {
 
     // Fetch the user from the database
     const user = await db.query.usersTable.findFirst({
-        where: (usersTable: { id: any; }, { eq }: any) => eq(usersTable.id, Number(locals.user!.id))
+        where: eq(usersTable.id, Number(locals.user!.id))
     });
+
 
     //create thread
     if (!user) {
