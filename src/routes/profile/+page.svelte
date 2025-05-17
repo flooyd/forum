@@ -18,6 +18,13 @@
 				avatar: $user.avatar
 			})
 		});
+
+		if (response.ok) {
+			const data = await response.json();
+			$user.displayName = data.user.displayName;
+			$user.avatar = data.user.avatar;
+			localStorage.setItem('user', JSON.stringify($user));
+		}
 	}
 </script>
 

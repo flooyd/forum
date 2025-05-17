@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { currentPage, user } from '../../../lib/stores';
+	import { currentPage, editCommentModal, user } from '../../../lib/stores';
+	import EditComment from '../../../lib/components/EditComment.svelte';
+
 	let comments: any[] = [];
 	let threadTitle: string = '';
 	let newComment: string = '';
+	let actionComment: any = {};
 
 	const addComment = async () => {
 		const threadId = window.location.pathname.split('/')[2];
@@ -20,14 +23,37 @@
 			data.comment[0].avatar = $user.avatar;
 			data.comment[0].displayName = $user.displayName;
 			comments = [...comments, data.comment[0]];
-			console.log(comments);
 			newComment = '';
 		} else {
 			console.error('Failed to add comment');
 		}
 	};
 
+	const editComment = (comment: any) => {
+		//clone comment to avoid mutating the original
+		actionComment = { ...comment };
+		$editCommentModal = true;
+	};
+
+	const deleteComment = async (commentId: string) => {
+		const threadId = window.location.pathname.split('/')[2];
+		const response = await fetch(`/comments/${threadId}`, {
+			method: 'DELETE',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${localStorage.getItem('token')}`
+			},
+			body: JSON.stringify({ commentId })
+		})
+	}
+
 	onMount(async () => {
+		$currentPage = 'comments';
+		await fetchComments();
+	});
+
+	const fetchComments = async () => {
+		console.log('Fetching comments...');
 		const threadId = window.location.pathname.split('/')[2];
 		const response = await fetch(`/comments/${threadId}`, {
 			method: 'GET',
@@ -40,8 +66,13 @@
 		console.log(data);
 		comments = data.comments;
 		threadTitle = data.threadTitle;
-		$currentPage = 'comments';
-	});
+	}
+
+	$: $editCommentModal === false && fetchComments();
+	$: if($editCommentModal === null) {
+		console.log('Edit comment modal closed');
+		console.log(comments);
+	}
 </script>
 
 <h2>{threadTitle}</h2>
@@ -55,11 +86,17 @@
 						<img src={comment.avatar} alt="comment author avatar" />{comment.displayName}
 					</p>
 					<div class="commentInfoDates">
-                        <p>Commented on {new Date(comment.createdAt).toLocaleString()}</p>
-                        {#if comment.updatedAt}
+						<p>Commented on {new Date(comment.createdAt).toLocaleString()}</p>
+						{#if comment.updatedAt}
 							<p>Updated on {new Date(comment.updatedAt).toLocaleString()}</p>
 						{/if}
-                    </div>
+					</div>
+				</div>
+				<div class="commentActions">
+					{#if $user && $user.id === comment.userId}
+						<button on:click={() => editComment(comment)}>Edit</button>
+						<button on:click={() => deleteComment(comment.id)}>Delete</button>
+					{/if}
 				</div>
 			</div>
 		{/each}
@@ -72,6 +109,9 @@
 		<textarea placeholder="Add a comment" bind:value={newComment}></textarea>
 		<button type="submit">Submit</button>
 	</form>
+{/if}
+{#if $editCommentModal}
+	<EditComment comment={actionComment} />
 {/if}
 
 <style>
@@ -109,5 +149,10 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+	}
+	.commentActions {
+		display: flex;
+		gap: 5px;
+		justify-content: flex-end;
 	}
 </style>

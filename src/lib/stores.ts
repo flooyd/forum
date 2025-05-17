@@ -11,6 +11,8 @@ const user: Writable<any> | null = writable({
     updatedAt: "",
 });
 const createThreadModal = writable(false);
+//edit commemt modal is boolean or null
+export const editCommentModal: Writable<boolean | null> = writable(null);;
 const threads: Writable<any[]> = writable([]);
 
 export { currentPage, token, user, createThreadModal, threads };
