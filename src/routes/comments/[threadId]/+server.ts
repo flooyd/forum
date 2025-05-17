@@ -181,3 +181,57 @@ export const PUT = async ({ locals, params, request }) => {
         });
     }
 }
+
+export const DELETE = async ({ request, locals, params }) => {
+    if(!locals.user) {
+        return new Response(JSON.stringify({ success: false, message: 'User not authenticated' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    //get the commentId from request json
+    const { commentId } = await request.json();
+
+    //check if the commentId is valid
+    if (!commentId) {
+        return new Response(JSON.stringify({ success: false, message: 'Invalid commentId' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    //check if user is the owner of the comment
+    const comment = await db.query.commentsTable.findFirst({
+        where: eq(commentsTable.id, Number(commentId))
+    });
+
+    if (!comment) {
+        return new Response(JSON.stringify({ success: false, message: 'Comment not found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    if (comment.userId !== Number(locals.user.id)) {
+        return new Response(JSON.stringify({ success: false, message: 'User not authorized to delete this comment' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    //delete the comment
+    const deletedComment = await db.delete(commentsTable).where(eq(commentsTable.id, Number(commentId))).returning();
+
+    if (!deletedComment) {
+        return new Response(JSON.stringify({ success: false, message: 'Error deleting comment' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } else {
+        return new Response(JSON.stringify({ success: true, deletedComment }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}

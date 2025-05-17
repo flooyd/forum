@@ -44,7 +44,13 @@
 				Authorization: `Bearer ${localStorage.getItem('token')}`
 			},
 			body: JSON.stringify({ commentId })
-		})
+		});
+
+		if (response.ok) {
+			comments = comments.filter(comment => comment.id !== commentId);
+		} else {
+			console.error('Failed to delete comment');
+		}
 	}
 
 	onMount(async () => {
