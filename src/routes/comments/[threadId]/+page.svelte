@@ -45,12 +45,6 @@
 			},
 			body: JSON.stringify({ commentId })
 		});
-
-		if (response.ok) {
-			comments = comments.filter(comment => comment.id !== commentId);
-		} else {
-			console.error('Failed to delete comment');
-		}
 	}
 
 	onMount(async () => {
@@ -154,7 +148,6 @@
 	.commentInfo {
 		display: flex;
 		justify-content: space-between;
-                flex-wrap: wrap;
 		align-items: center;
 	}
 	.commentActions {
