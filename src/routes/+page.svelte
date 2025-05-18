@@ -51,7 +51,10 @@ This is the forum site xD.
 				<button class="thread" on:click={() => handleClickThread(thread)}>
 					<h2>{thread.title}</h2>
 					<div class="info">
-						<p class="creator"><img src={thread.avatar} alt="thread creator avatar"/> {thread.displayName}</p>
+						<p class="creator">
+							<img src={thread.avatar} alt="thread creator avatar" />
+							{thread.displayName}
+						</p>
 						<p>Replies: {thread.commentCount}</p>
 					</div>
 					<p>Created at: {new Date(thread.createdAt).toLocaleString()}</p>
@@ -59,8 +62,6 @@ This is the forum site xD.
 				</button>
 			{/each}
 		</div>
-	{:else}
-		<p>No threads available.</p>
 	{/if}
 {/if}
 
