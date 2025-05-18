@@ -154,6 +154,7 @@
 	.commentInfo {
 		display: flex;
 		justify-content: space-between;
+                flex-wrap: wrap;
 		align-items: center;
 	}
 	.commentActions {
