@@ -36,7 +36,6 @@
 	};
 </script>
 
-This is the forum site xD.
 {#if $user && ready}
 	<div class="toolbar">
 		<button on:click={() => ($createThreadModal = true)}>Create Thread</button>
