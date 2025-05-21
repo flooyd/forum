@@ -8,6 +8,55 @@
 	let newComment: string = '';
 	let actionComment: any = {};
 
+	const quoteComment = (comment: any) => {
+		// Format the quote with HTML blockquote including display name
+		const quoteText = `<blockquote data-author="${comment.displayName}" data-id="${comment.id}">${comment.content}</blockquote>\n\n`;
+
+		// Add the quote to the textarea
+		newComment = quoteText + newComment;
+
+		// Focus on textarea and move cursor to the end
+		setTimeout(() => {
+			const textarea = document.querySelector('textarea');
+			if (textarea) {
+				textarea.focus();
+				textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+			}
+		}, 0);
+	};
+
+	const formatComment = (content: string) => {
+    if (!content) return '';
+
+    // Sanitize content first
+    let sanitized = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Process blockquotes recursively
+    let previousSanitized;
+    do {
+        previousSanitized = sanitized;
+        sanitized = previousSanitized.replace(
+            /&lt;blockquote data-author="([^"]+)" data-id="([^"]+)"&gt;([\s\S]*?)&lt;\/blockquote&gt;/gs,
+            (_match, author, id, quote) => {
+                // Convert newlines within quotes to <br> tags
+                const formattedQuote = quote.replace(/\n/g, '<br>');
+                // Fix: Remove extra indentation and line breaks in the template
+                return `<div class="quoted-content"><div class="quote-header">Quoted ${author} <span class="quote-id">#${id}</span>:</div><div class="quote-body">${formattedQuote}</div></div>`;
+            }
+        );
+    } while (sanitized !== previousSanitized); // Continue until no more changes are made
+
+    // Check if the content was just a quote (plus maybe some whitespace)
+    const isJustQuote = /^(\s*)<div class="quoted-content">[\s\S]*<\/div>(\s*)$/.test(sanitized);
+    
+    if (!isJustQuote) {
+        // Only add <br> for newlines if there's actual content besides quotes
+        sanitized = sanitized.replace(/\n/g, '<br>');
+    }
+
+    return sanitized;
+};
+
 	const addComment = async () => {
 		const threadId = window.location.pathname.split('/')[2];
 		const response = await fetch(`/comments/${threadId}`, {
@@ -45,7 +94,13 @@
 			},
 			body: JSON.stringify({ commentId })
 		});
-	}
+
+		if (response.ok) {
+			comments = comments.filter((comment) => comment.id !== commentId);
+		} else {
+			console.error('Failed to delete comment');
+		}
+	};
 
 	onMount(async () => {
 		$currentPage = 'comments';
@@ -66,13 +121,9 @@
 		console.log(data);
 		comments = data.comments;
 		threadTitle = data.threadTitle;
-	}
+	};
 
 	$: $editCommentModal === false && fetchComments();
-	$: if($editCommentModal === null) {
-		console.log('Edit comment modal closed');
-		console.log(comments);
-	}
 </script>
 
 <h2>{threadTitle}</h2>
@@ -80,7 +131,7 @@
 	<div class="comments">
 		{#each comments as comment}
 			<div class="comment">
-				<p>{comment.content}</p>
+				{@html formatComment(comment.content)}
 				<div class="commentInfo">
 					<p class="creator">
 						<img src={comment.avatar} alt="comment author avatar" />{comment.displayName}
@@ -97,6 +148,9 @@
 						<button on:click={() => editComment(comment)}>Edit</button>
 						<button on:click={() => deleteComment(comment.id)}>Delete</button>
 					{/if}
+					{#if $user}
+						<button on:click={() => quoteComment(comment)}>Quote</button>
+					{/if}
 				</div>
 			</div>
 		{/each}
@@ -107,7 +161,7 @@
 {#if $user}
 	<form on:submit|preventDefault={addComment}>
 		<textarea placeholder="Add a comment" bind:value={newComment}></textarea>
-		<button type="submit">Submit</button>
+		<button type="submit">Add Comment</button>
 	</form>
 {/if}
 {#if $editCommentModal}
@@ -122,12 +176,13 @@
 	form {
 		margin-top: 10px;
 		display: flex;
-		align-items: center;
+		flex-direction: column;
 		gap: 5px;
 	}
 
 	.comments {
-		border: 1px solid white;
+		border: 2px solid white;
+		border-radius: 4px;
 		display: flex;
 		flex-direction: column;
 	}
@@ -137,22 +192,55 @@
 		display: flex;
 		gap: 5px;
 		flex-direction: column;
-		border-bottom: 1px solid white;
+		border-bottom: 2px solid white;
 	}
+
 	.comment:last-child {
 		border-bottom: none;
 	}
+
 	.comment:hover {
 		background: #333;
 	}
+
 	.commentInfo {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 	}
+
 	.commentActions {
 		display: flex;
 		gap: 5px;
 		justify-content: flex-end;
+	}
+
+	textarea {
+		width: 100%;
+		height: 100px;
+		resize: none;
+	}
+
+	:global(.quoted-content) {
+		background-color: #333;
+		padding: 8px;
+		margin: 8px 0;
+		border-left: 3px solid lightblue;
+	}
+
+	:global(.quote-header) {
+		color: #aaa;
+		font-size: 0.8em;
+		font-weight: bold;
+	}
+
+	:global(.quote-body) {
+		padding-left: 8px;
+	}
+
+	:global(.quote-id) {
+		color: #888;
+		font-size: 0.9em;
+		margin-left: 4px;
 	}
 </style>

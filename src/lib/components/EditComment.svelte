@@ -32,7 +32,7 @@
 		<h2>Edit Comment</h2>
 		<form on:submit|preventDefault={editComment}>
 			<label for="title">Content</label>
-			<input type="text" id="title" bind:value={comment.content} required />
+			<textarea id="title" bind:value={comment.content} required></textarea>
 			<button type="submit">Edit</button>
 			<button on:click={closeModal}>Cancel</button>
 		</form>
@@ -40,7 +40,8 @@
 </div>
 
 <style>
-    input {
-        max-width: calc(100vw - 40px);
-    }
+   textarea {
+        width: 100%;
+        height: calc(100vh - 200px);
+   }
 </style>

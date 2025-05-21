@@ -153,6 +153,7 @@
 	:global(label) {
 		color: white;
 		font-weight: bold;
+		margin-bottom: 5px;
 	}
 
 	:global(.creator) {
