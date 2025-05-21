@@ -10,7 +10,7 @@
 
 	const quoteComment = (comment: any) => {
 		// Format the quote with HTML blockquote including display name
-		const quoteText = `<blockquote data-author="${comment.displayName}" data-id="${comment.id}">${comment.content}</blockquote>\n\n`;
+		const quoteText = `<blockquote data-author="${comment.displayName}" data-id="${comment.id}">${comment.content}</blockquote>\n`;
 
 		// Add the quote to the textarea
 		newComment = quoteText + newComment;
@@ -223,8 +223,8 @@
 
 	:global(.quoted-content) {
 		background-color: #333;
-		padding: 8px;
-		margin: 8px 0;
+		padding: 5px;
+		margin: 5px 0px;
 		border-left: 3px solid lightblue;
 	}
 
