@@ -22,7 +22,7 @@
 			const textarea = document.querySelector('textarea');
 			if (textarea) {
 				textarea.focus();
-				textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+				textarea.selectionStart = textarea.selectionEnd - 1;
 			}
 		}, 0);
 	};
@@ -40,10 +40,8 @@
 			sanitized = previousSanitized.replace(
 				/&lt;blockquote data-author="([^"]+)" data-id="([^"]+)"&gt;([\s\S]*?)&lt;\/blockquote&gt;/gs,
 				(_match, author, id, quote) => {
-					// Convert newlines within quotes to <br> tags
-					const formattedQuote = quote.replace(/\n/g, '<br>');
 					// Fix: Remove extra indentation and line breaks in the template
-					return `<div class="quoted-content"><div class="quote-header">Quoted ${author} <span class="quote-id">#${id}</span>:</div><div class="quote-body">${formattedQuote}</div></div>`;
+					return `<div class="quoted-content"><div class="quote-header">Quoted ${comments.find(c => c.id === Number(id)).displayName} <span class="quote-id">#${id}</span>:</div><div class="quote-body">${quote}</div></div>`;
 				}
 			);
 		} while (sanitized !== previousSanitized); // Continue until no more changes are made
