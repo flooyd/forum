@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { currentPage, user, token } from '../lib/stores';
+	import { fade } from 'svelte/transition';
+
 	let ready = false;
 
 	onMount(() => {
@@ -18,7 +20,7 @@
 </script>
 
 {#if ready}
-	<nav>
+	<nav transition:fade>
 		<h1><a class={$currentPage === 'home' ? 'currentPage' : ''} href="/">The Forum</a></h1>
 		<div>
 			{#if $user}
@@ -56,7 +58,6 @@
 	:global(nav) {
 		display: flex;
 		justify-content: space-between;
-		margin-bottom: 20px;
 		align-items: center;
 		border-bottom: 4px solid white;
 		position: sticky;

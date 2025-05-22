@@ -2,11 +2,13 @@
 	import { onMount } from 'svelte';
 	import { currentPage, editCommentModal, user } from '../../../lib/stores';
 	import EditComment from '../../../lib/components/EditComment.svelte';
+	import { fade } from 'svelte/transition';
 
 	let comments: any[] = [];
 	let threadTitle: string = '';
 	let newComment: string = '';
 	let actionComment: any = {};
+	let ready = false;
 
 	const quoteComment = (comment: any) => {
 		// Format the quote with HTML blockquote including display name
@@ -26,36 +28,36 @@
 	};
 
 	const formatComment = (content: string) => {
-    if (!content) return '';
+		if (!content) return '';
 
-    // Sanitize content first
-    let sanitized = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		// Sanitize content first
+		let sanitized = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    // Process blockquotes recursively
-    let previousSanitized;
-    do {
-        previousSanitized = sanitized;
-        sanitized = previousSanitized.replace(
-            /&lt;blockquote data-author="([^"]+)" data-id="([^"]+)"&gt;([\s\S]*?)&lt;\/blockquote&gt;/gs,
-            (_match, author, id, quote) => {
-                // Convert newlines within quotes to <br> tags
-                const formattedQuote = quote.replace(/\n/g, '<br>');
-                // Fix: Remove extra indentation and line breaks in the template
-                return `<div class="quoted-content"><div class="quote-header">Quoted ${author} <span class="quote-id">#${id}</span>:</div><div class="quote-body">${formattedQuote}</div></div>`;
-            }
-        );
-    } while (sanitized !== previousSanitized); // Continue until no more changes are made
+		// Process blockquotes recursively
+		let previousSanitized;
+		do {
+			previousSanitized = sanitized;
+			sanitized = previousSanitized.replace(
+				/&lt;blockquote data-author="([^"]+)" data-id="([^"]+)"&gt;([\s\S]*?)&lt;\/blockquote&gt;/gs,
+				(_match, author, id, quote) => {
+					// Convert newlines within quotes to <br> tags
+					const formattedQuote = quote.replace(/\n/g, '<br>');
+					// Fix: Remove extra indentation and line breaks in the template
+					return `<div class="quoted-content"><div class="quote-header">Quoted ${author} <span class="quote-id">#${id}</span>:</div><div class="quote-body">${formattedQuote}</div></div>`;
+				}
+			);
+		} while (sanitized !== previousSanitized); // Continue until no more changes are made
 
-    // Check if the content was just a quote (plus maybe some whitespace)
-    const isJustQuote = /^(\s*)<div class="quoted-content">[\s\S]*<\/div>(\s*)$/.test(sanitized);
-    
-    if (!isJustQuote) {
-        // Only add <br> for newlines if there's actual content besides quotes
-        sanitized = sanitized.replace(/\n/g, '<br>');
-    }
+		// Check if the content was just a quote (plus maybe some whitespace)
+		const isJustQuote = /^(\s*)<div class="quoted-content">[\s\S]*<\/div>(\s*)$/.test(sanitized);
 
-    return sanitized;
-};
+		if (!isJustQuote) {
+			// Only add <br> for newlines if there's actual content besides quotes
+			sanitized = sanitized.replace(/\n/g, '<br>');
+		}
+
+		return sanitized;
+	};
 
 	const addComment = async () => {
 		const threadId = window.location.pathname.split('/')[2];
@@ -105,6 +107,7 @@
 	onMount(async () => {
 		$currentPage = 'comments';
 		await fetchComments();
+		ready = true;
 	});
 
 	const fetchComments = async () => {
@@ -126,51 +129,57 @@
 	$: $editCommentModal === false && fetchComments();
 </script>
 
-<h2>{threadTitle}</h2>
-{#if comments.length > 0}
-	<div class="comments">
-		{#each comments as comment}
-			<div class="comment">
-				{@html formatComment(comment.content)}
-				<div class="commentInfo">
-					<p class="creator">
-						<img src={comment.avatar} alt="comment author avatar" />{comment.displayName}
-					</p>
-					<div class="commentInfoDates">
-						<p>Commented on {new Date(comment.createdAt).toLocaleString()}</p>
-						{#if comment.updatedAt}
-							<p>Updated on {new Date(comment.updatedAt).toLocaleString()}</p>
-						{/if}
+{#if ready}
+	<div transition:fade>
+		{#if comments.length > 0}
+			<h2>{threadTitle}</h2>
+			<div class="comments">
+				{#each comments as comment}
+					<div class="comment">
+						{@html formatComment(comment.content)}
+						<div class="commentInfo">
+							<p class="creator">
+								<img src={comment.avatar} alt="comment author avatar" />{comment.displayName}
+							</p>
+							<div class="commentInfoDates">
+								<p>Commented on {new Date(comment.createdAt).toLocaleString()}</p>
+								{#if comment.updatedAt}
+									<p>Updated on {new Date(comment.updatedAt).toLocaleString()}</p>
+								{/if}
+							</div>
+						</div>
+						<div class="commentActions">
+							{#if $user && $user.id === comment.userId}
+								<button on:click={() => editComment(comment)}>Edit</button>
+								<button on:click={() => deleteComment(comment.id)}>Delete</button>
+							{/if}
+							{#if $user}
+								<button on:click={() => quoteComment(comment)}>Quote</button>
+							{/if}
+						</div>
 					</div>
-				</div>
-				<div class="commentActions">
-					{#if $user && $user.id === comment.userId}
-						<button on:click={() => editComment(comment)}>Edit</button>
-						<button on:click={() => deleteComment(comment.id)}>Delete</button>
-					{/if}
-					{#if $user}
-						<button on:click={() => quoteComment(comment)}>Quote</button>
-					{/if}
-				</div>
+				{/each}
 			</div>
-		{/each}
+		{/if}
+		{#if $user}
+			<form on:submit|preventDefault={addComment}>
+				<textarea placeholder="Add a comment" bind:value={newComment}></textarea>
+				<button type="submit">Add Comment</button>
+			</form>
+		{/if}
+		{#if $editCommentModal}
+			<EditComment comment={actionComment} />
+		{/if}
 	</div>
-{:else}
-	<p>No comments yet.</p>
-{/if}
-{#if $user}
-	<form on:submit|preventDefault={addComment}>
-		<textarea placeholder="Add a comment" bind:value={newComment}></textarea>
-		<button type="submit">Add Comment</button>
-	</form>
-{/if}
-{#if $editCommentModal}
-	<EditComment comment={actionComment} />
 {/if}
 
 <style>
 	h2 {
 		color: yellow;
+		position: sticky;
+		top: 61.5px;
+		padding-top: 10px;
+		background: black;
 	}
 
 	form {
@@ -207,6 +216,8 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		flex-wrap: wrap;
+		gap: 5px;
 	}
 
 	.commentActions {

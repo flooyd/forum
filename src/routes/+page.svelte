@@ -4,13 +4,14 @@
 	import { user, token, threads } from '../lib/stores';
 	import CreateThread from '$lib/components/CreateThread.svelte';
 	import { goto } from '$app/navigation';
+	import { fade } from 'svelte/transition';
 
 	let ready = false;
 
-	onMount(() => {
-		ready = true;
+	onMount(async () => {
 		$currentPage = 'home';
-		getThreads();
+		await getThreads();
+		ready = true;
 	});
 
 	const getThreads = async () => {
@@ -37,9 +38,12 @@
 </script>
 
 {#if $user && ready}
-	<div class="toolbar">
+<div transition:fade>
+	<div class="toolbarContainer">
+		<div class="toolbar">
 		<button on:click={() => ($createThreadModal = true)}>Create Thread</button>
 		<button>Filter</button>
+	</div>
 	</div>
 	{#if $createThreadModal}
 		<CreateThread />
@@ -62,15 +66,21 @@
 			{/each}
 		</div>
 	{/if}
+	</div>
 {/if}
 
 <style>
+	.toolbarContainer {
+		position: sticky;
+		top: 61.5px;
+		padding: 10px 0px;
+		background: black;
+	}
 	.toolbar {
 		border: 2px solid white;
 		border-radius: 4px;
 		padding: 8px;
 		background: black;
-		margin: 10px 0px;
 	}
 	.threads {
 		display: flex;
