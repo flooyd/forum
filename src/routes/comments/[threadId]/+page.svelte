@@ -178,7 +178,8 @@
 		color: yellow;
 		position: sticky;
 		top: 61.5px;
-		padding-top: 10px;
+		margin: 0px;
+		padding: 10px 0px;
 		background: black;
 	}
 

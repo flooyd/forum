@@ -42,6 +42,9 @@
 {/if}
 
 <style>
+	h1 {
+		margin: 0px;
+	}
 	:global(body) {
 		margin: 0;
 		padding: 0;
@@ -89,6 +92,7 @@
 	:global(h1) {
 		color: white;
 		font-size: 25px;
+		margin-bottom: 10px;
 	}
 
 	:global(h1 a) {

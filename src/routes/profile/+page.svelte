@@ -46,5 +46,6 @@
 <style>
 	h2 {
 		color: yellow;
+		margin: 10px 0px;
 	}
 </style>
