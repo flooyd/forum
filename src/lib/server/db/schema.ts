@@ -35,4 +35,20 @@ export const commentsTable = pgTable('comments', {
 	isReported: integer('is_reported').notNull(),
 });
 
+export const tagsTable = pgTable('tags', {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    description: text('description'),
+    color: text('color'), // Hex color code for tag styling
+    createdAt: timestamp('created_at').notNull(),
+    updatedAt: timestamp('updated_at')
+});
+
+export const threadTagsTable = pgTable('thread_tags', {
+    id: serial('id').primaryKey(),
+    threadId: integer('thread_id').notNull().references(() => threadsTable.id),
+    tagId: integer('tag_id').notNull().references(() => tagsTable.id),
+    createdAt: timestamp('created_at').notNull()
+});
+
 

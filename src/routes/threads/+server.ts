@@ -1,6 +1,6 @@
 //import db
 import { db } from '$lib/server/db';
-import { usersTable, threadsTable, commentsTable } from '$lib/server/db/schema.js';
+import { usersTable, threadsTable, commentsTable, tagsTable, threadTagsTable } from '$lib/server/db/schema.js';
 import { eq, desc, sql } from 'drizzle-orm';
 
 export const POST = async ({ request, locals }) => {
@@ -55,6 +55,7 @@ export const GET = async ({ locals }) => {
             headers: { 'Content-Type': 'application/json' }
         });
     }
+    
     try {
         const threadsWithUsersAndCounts = await db
             .select({
@@ -65,7 +66,7 @@ export const GET = async ({ locals }) => {
                 updatedAt: threadsTable.updatedAt,
                 displayName: usersTable.displayName,
                 avatar: usersTable.avatar,
-                commentCount: sql`COUNT(${commentsTable.id})`
+                commentCount: sql`COUNT(DISTINCT ${commentsTable.id})`
             })
             .from(threadsTable)
             .innerJoin(usersTable,
@@ -75,9 +76,28 @@ export const GET = async ({ locals }) => {
                 eq(commentsTable.threadId, threadsTable.id)
             )
             .groupBy(threadsTable.id, usersTable.displayName, usersTable.avatar)
-            .orderBy(desc(threadsTable.createdAt));
+            .orderBy(desc(threadsTable.createdAt));        // Fetch tags for each thread
+        const threadsWithTags = await Promise.all(
+            threadsWithUsersAndCounts.map(async (thread: any) => {
+                const tags = await db
+                    .select({
+                        id: tagsTable.id,
+                        name: tagsTable.name,
+                        description: tagsTable.description,
+                        color: tagsTable.color
+                    })
+                    .from(threadTagsTable)
+                    .innerJoin(tagsTable, eq(threadTagsTable.tagId, tagsTable.id))
+                    .where(eq(threadTagsTable.threadId, thread.id));
 
-        return new Response(JSON.stringify({ success: true, threads: threadsWithUsersAndCounts }), {
+                return {
+                    ...thread,
+                    tags
+                };
+            })
+        );
+
+        return new Response(JSON.stringify({ success: true, threads: threadsWithTags }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });

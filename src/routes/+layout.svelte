@@ -125,7 +125,6 @@
 
 	:global(input) {
 		display: block;
-		margin-bottom: 10px;
 		padding: 5px;
 		width: 100%;
 		max-width: 250px;
@@ -138,14 +137,15 @@
 	:global(button) {
 		padding: 5px;
 		border-radius: 4px;
-		background-color: #007bff;
-		color: white;
-		border: none;
+		background-color: white;
+		color: black;
+		border: 2px solid lightblue;
 		cursor: pointer;
 	}
 
 	:global(button:hover) {
-		background-color: #0056b3;
+		background: #444;
+		color: white;
 	}
 
 	:global(.error) {
