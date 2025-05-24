@@ -5,9 +5,11 @@
 	export let threadId: number;
 	export let existingTags: any[] = [];
 	export let onTagsChanged: () => void = () => {};
+	export let tagsChanged: boolean = false;
 
 	let allTags: any[] = [];
 	let selectedTags: any[] = [...existingTags];
+	let filteredTags: any[] = [];
 	let isManaging = false;
 	let newTagName = '';
 	let newTagColor = 'lightblue';
@@ -15,6 +17,7 @@
 
 	onMount(async () => {
 		await loadAllTags();
+		filteredTags = getAvailableTags();
 	});
 
 	const loadAllTags = async () => {
@@ -48,6 +51,7 @@
 			if (response.ok) {
 				const data = await response.json();
 				selectedTags = [...selectedTags, data.tag];
+				filteredTags = getAvailableTags();
 				onTagsChanged();
 			}
 		} catch (error) {
@@ -68,6 +72,7 @@
 
 			if (response.ok) {
 				selectedTags = selectedTags.filter((tag) => tag.id !== tagId);
+				filteredTags = getAvailableTags();
 				onTagsChanged();
 			}
 		} catch (error) {
@@ -94,6 +99,8 @@
 			if (response.ok) {
 				const newTag = await response.json();
 				allTags = [...allTags, newTag];
+				filteredTags = getAvailableTags();
+				onTagsChanged();
 				newTagName = '';
 				newTagColor = 'lightblue';
 				isCreatingTag = false;
@@ -106,17 +113,79 @@
 	const getAvailableTags = () => {
 		return allTags.filter((tag) => !selectedTags.some((selected) => selected.id === tag.id));
 	};
+
+	const deleteTagGlobally = async (tagId: number) => {
+		if (
+			!confirm(
+				'Are you sure you want to delete this tag globally? This will remove it from all threads.'
+			)
+		) {
+			return;
+		}
+		onTagsChanged();
+
+		try {
+			const response = await fetch('/tags', {
+				method: 'DELETE',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${$token}`
+				},
+				body: JSON.stringify({ id: tagId })
+			});
+
+			if (response.ok) {
+				// Remove from allTags list
+				allTags = allTags.filter((tag) => tag.id !== tagId);
+				// Remove from selectedTags if it was selected
+				selectedTags = selectedTags.filter((tag) => tag.id !== tagId);
+				onTagsChanged();
+			} else {
+				const error = await response.json();
+				alert(`Failed to delete tag: ${error.error || 'Unknown error'}`);
+			}
+		} catch (error) {
+			console.error('Failed to delete tag globally:', error);
+			alert('Failed to delete tag. Please try again.');
+		}
+	};
+
+	const changedTags = async () => {
+		await loadAllTags();
+		filteredTags = getAvailableTags();
+		tagsChanged = false;
+	};
+
+	$: if (tagsChanged && isManaging) {
+		changedTags();
+		console.log('hi');
+	}
 </script>
 
 <div class="tag-management">
 	<div class="current-tags">
 		{#each selectedTags as tag}
-			<span class="tag" style="background-color: {tag.color || 'lightblue'}">
-				{tag.name}
+			<div class="selected-tag-item">
+				<span class="tag" style="background-color: {tag.color || 'lightblue'}">
+					{tag.name}
+					{#if isManaging}
+						<button
+							class="remove-tag"
+							on:click={() => removeTagFromThread(tag.id)}
+							title="Remove from thread">×</button
+						>
+					{/if}
+				</span>
 				{#if isManaging}
-					<button class="remove-tag" on:click={() => removeTagFromThread(tag.id)}>×</button>
+					<button
+						class="delete-tag-button"
+						on:click={() => deleteTagGlobally(tag.id)}
+						title="Delete tag globally"
+					>
+						🗑️
+					</button>
 				{/if}
-			</span>
+			</div>
 		{/each}
 		{#if selectedTags.length === 0}
 			<span class="no-tags">No tags</span>
@@ -128,38 +197,46 @@
 	</button>
 
 	{#if isManaging}
-		<div class="tag-selector">
+		<div class="tagSelector">
 			<h4>Available Tags:</h4>
-			{#each getAvailableTags() as tag}
-				<button class="available-tag" on:click={() => addTagToThread(tag.id)}>
-					<span class="tag" style="background-color: {tag.color || 'lightblue'}">
-						{tag.name}
-					</span>
-				</button>
+			{#each filteredTags as tag}
+				<div class="available-tag-item">
+					<button class="available-tag" on:click={() => addTagToThread(tag.id)}>
+						<span class="tag" style="background-color: {tag.color || 'lightblue'}">
+							{tag.name}
+						</span>
+					</button>
+					<button
+						class="delete-tag-button"
+						on:click={() => deleteTagGlobally(tag.id)}
+						title="Delete tag globally"
+					>
+						🗑️
+					</button>
+				</div>
 			{/each}
 
 			{#if getAvailableTags().length === 0}
 				<p class="no-available">All available tags are already applied</p>
 			{/if}
-
-			<div class="create-tag-section">
-				{#if !isCreatingTag}
-					<button class="create-tag-button" on:click={() => (isCreatingTag = true)}>
-						+ Create New Tag
-					</button>
-				{:else}
-					<div class="create-tag-form">
-						<input type="text" placeholder="Tag name" bind:value={newTagName} maxlength="50" />
-						<button on:click={createNewTag}>Create</button>
-						<button
-							on:click={() => {
-								isCreatingTag = false;
-								newTagName = '';
-							}}>Cancel</button
-						>
-					</div>
-				{/if}
-			</div>
+		</div>
+		<div class="create-tag-section">
+			{#if !isCreatingTag}
+				<button class="create-tag-button" on:click={() => (isCreatingTag = true)}>
+					+ Create New Tag
+				</button>
+			{:else}
+				<div class="create-tag-form">
+					<input type="text" placeholder="Tag name" bind:value={newTagName} maxlength="50" />
+					<button on:click={createNewTag}>Create</button>
+					<button
+						on:click={() => {
+							isCreatingTag = false;
+							newTagName = '';
+						}}>Cancel</button
+					>
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -177,6 +254,19 @@
 		min-height: 20px;
 	}
 
+	.selected-tag-item {
+		display: flex;
+		align-items: center;
+		gap: 3px;
+	}
+
+	.available-tag-item {
+		display: flex;
+		align-items: center;
+		gap: 3px;
+		margin: 2px;
+	}
+
 	.tag {
 		display: inline-flex;
 		align-items: center;
@@ -191,7 +281,7 @@
 		background: none;
 		border: none;
 		color: black;
-		margin-left: 4px;
+		margin-left: 5px;
 		padding: 0;
 		width: 14px;
 		height: 14px;
@@ -200,7 +290,6 @@
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
-		font-size: 10px;
 	}
 
 	.remove-tag:hover {
@@ -210,25 +299,22 @@
 	.no-tags {
 		color: #888;
 		font-style: italic;
-		font-size: 0.8em;
 	}
 
 	.manage-button {
 		margin-top: 5px;
 	}
 
-	.tag-selector {
-		margin-top: 8px;
-		padding: 8px;
+	.tagSelector {
+		margin: 5px 0px;
+		padding: 5px;
 		border: 1px solid #555;
 		border-radius: 4px;
 		background: #222;
-	}
-
-	.tag-selector h4 {
-		margin: 0 0 8px 0;
-		color: white;
-		font-size: 0.85em;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 5px;
 	}
 
 	.available-tag {
@@ -248,32 +334,31 @@
 		color: #888;
 		font-style: italic;
 		margin: 8px 0;
-		font-size: 0.8em;
-	}
-
-	.create-tag-section {
-		margin-top: 8px;
-		padding-top: 8px;
-		border-top: 1px solid #555;
-	}
-	.create-tag-button {
-		background: lightblue;
-		color: black;
-		border: none;
-		padding: 4px 8px;
-		border-radius: 4px;
-		font-size: 0.75em;
-		cursor: pointer;
-	}
-
-	.create-tag-button:hover {
-		background: #add8e6;
 	}
 
 	.create-tag-form {
 		display: flex;
-		gap: 4px;
+		gap: 5px;
 		align-items: center;
 		flex-wrap: wrap;
+	}
+
+	.delete-tag-button {
+		background: none;
+		border: none;
+		color: #ff6b6b;
+		padding: 2px;
+		cursor: pointer;
+		border-radius: 2px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 18px;
+		height: 18px;
+	}
+
+	.delete-tag-button:hover {
+		background: rgba(255, 107, 107, 0.2);
+		color: #ff4444;
 	}
 </style>

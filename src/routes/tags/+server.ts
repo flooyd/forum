@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { tagsTable } from '$lib/server/db/schema';
+import { tagsTable, threadTagsTable } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 // GET /tags - Get all tags
@@ -112,6 +112,11 @@ export const DELETE = async ({ request, locals }) => {
       return json({ error: 'Tag ID is required' }, { status: 400 });
     }
 
+    // First, delete all thread-tag associations for this tag
+    await db.delete(threadTagsTable)
+      .where(eq(threadTagsTable.tagId, id));
+
+    // Then delete the tag itself
     const [deletedTag] = await db.delete(tagsTable)
       .where(eq(tagsTable.id, id))
       .returning();
@@ -121,7 +126,7 @@ export const DELETE = async ({ request, locals }) => {
     }
 
     return json({ message: 'Tag deleted successfully' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting tag:', error);
     return json({ error: 'Failed to delete tag' }, { status: 500 });
   }

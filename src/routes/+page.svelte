@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createThreadModal, currentPage } from '../lib/stores';	import { user, token, threads } from '../lib/stores';
+	import { createThreadModal, currentPage } from '../lib/stores';
+	import { user, token, threads } from '../lib/stores';
 	import CreateThread from '$lib/components/CreateThread.svelte';
-	import TagDisplay from '$lib/components/TagDisplay.svelte';
 	import TagManager from '$lib/components/TagManager.svelte';
 	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
 
 	let ready = false;
+	let tagsChanged = false;
 
 	onMount(async () => {
 		$currentPage = 'home';
@@ -39,38 +40,47 @@
 </script>
 
 {#if $user && ready}
-<div transition:fade>
-	<div class="toolbarContainer">
-		<div class="toolbar">
-		<button on:click={() => ($createThreadModal = true)}>Create Thread</button>
-		<button>Filter</button>
-	</div>
-	</div>
-	{#if $createThreadModal}
-		<CreateThread />
-	{/if}
-	{#if $threads.length > 0}		<div class="threads">			{#each $threads as thread}
-				<div class="thread-container">
-					<button class="thread" on:click={() => handleClickThread(thread)}>
-						<h2>{thread.title}</h2>
-						<div class="info">
-							<p class="creator">
-								<img src={thread.avatar} alt="thread creator avatar" />
-								{thread.displayName}
-							</p>
-							<p>Replies: {thread.commentCount}</p>
-						</div>
-						<p>Created at: {new Date(thread.createdAt).toLocaleString()}</p>
-						<p>Updated at: {new Date(thread.updatedAt).toLocaleString()}</p>
-					</button>					{#if $user && thread.userId === $user.id}
-						<div class="tag-manager-container">
-							<TagManager threadId={thread.id} existingTags={thread.tags || []} onTagsChanged={getThreads} />
-						</div>
-					{/if}
-				</div>
-			{/each}
+	<div transition:fade>
+		<div class="toolbarContainer">
+			<div class="toolbar">
+				<button on:click={() => ($createThreadModal = true)}>Create Thread</button>
+				<button>Filter</button>
+			</div>
 		</div>
-	{/if}
+		{#if $createThreadModal}
+			<CreateThread />
+		{/if}
+			<div class="threads">
+				{#each $threads as thread}
+					<div class="thread-container">
+						<button class="thread" on:click={() => handleClickThread(thread)}>
+							<h2>{thread.title}</h2>
+							<div class="info">
+								<p class="creator">
+									<img src={thread.avatar} alt="thread creator avatar" />
+									{thread.displayName}
+								</p>
+								<p>Replies: {thread.commentCount}</p>
+							</div>
+							<p>Created at: {new Date(thread.createdAt).toLocaleString()}</p>
+							<p>Updated at: {new Date(thread.updatedAt).toLocaleString()}</p>
+						</button>
+						{#if $user && thread.userId === $user.id}
+							<div class="tag-manager-container">
+								<TagManager
+									threadId={thread.id}
+									existingTags={thread.tags || []}
+									onTagsChanged={() => {
+										getThreads();
+										tagsChanged = true;
+									}}
+									tagsChanged={tagsChanged}
+								/>
+							</div>
+						{/if}
+					</div>
+				{/each}
+			</div>
 	</div>
 {/if}
 
@@ -86,7 +96,8 @@
 		border-radius: 4px;
 		padding: 8px;
 		background: black;
-	}	.threads {
+	}
+	.threads {
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
