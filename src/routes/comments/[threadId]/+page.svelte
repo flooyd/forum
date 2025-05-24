@@ -2,9 +2,11 @@
 	import { onMount } from 'svelte';
 	import { currentPage, editCommentModal, user } from '../../../lib/stores';
 	import EditComment from '../../../lib/components/EditComment.svelte';
+	import TagDisplay from '../../../lib/components/TagDisplay.svelte';
 	import { fade } from 'svelte/transition';
 
 	let comments: any[] = [];
+	let tags: any[] = [];
 	let threadTitle: string = '';
 	let newComment: string = '';
 	let actionComment: any = {};
@@ -105,6 +107,7 @@
 	onMount(async () => {
 		$currentPage = 'comments';
 		await fetchComments();
+		await fetchTags();
 		ready = true;
 	});
 
@@ -124,13 +127,28 @@
 		threadTitle = data.threadTitle;
 	};
 
+	const fetchTags = async () => {
+		const response = await fetch('/tags', {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${localStorage.getItem('token')}`
+			}
+		});
+		const data = await response.json();
+		tags = data;
+	};
+
 	$: $editCommentModal === false && fetchComments();
 </script>
 
 {#if ready}
 	<div transition:fade>
 		{#if comments.length > 0}
-			<h2>{threadTitle}</h2>
+			<div class="title">
+				<h2>{threadTitle}</h2>
+				<TagDisplay tags={tags} maxDisplay={3} />
+			</div>
 			<div class="comments">
 				{#each comments as comment}
 					<div class="comment">
@@ -174,6 +192,9 @@
 <style>
 	h2 {
 		color: yellow;
+	}
+
+	.title {
 		position: sticky;
 		top: 61.5px;
 		margin: 0px;
