@@ -192,10 +192,6 @@
 		{/if}
 	</div>
 
-	<button class="manage-button" on:click={() => (isManaging = !isManaging)}>
-		{isManaging ? 'Done' : 'Manage Tags'}
-	</button>
-
 	{#if isManaging}
 		<div class="tagSelector">
 			<h4>Available Tags:</h4>
@@ -239,6 +235,9 @@
 			{/if}
 		</div>
 	{/if}
+    <button class="manage-button" on:click={() => (isManaging = !isManaging)}>
+		{isManaging ? 'Done' : 'Manage Tags'}
+	</button>
 </div>
 
 <style>
