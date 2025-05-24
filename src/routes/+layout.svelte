@@ -121,6 +121,9 @@
 		max-width: calc(100vw - 40px);
 		margin-bottom: 20px;
 		background: #333;
+		display: flex;
+		gap: 5px;
+		flex-direction: column;
 	}
 
 	:global(input) {
