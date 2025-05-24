@@ -53,7 +53,7 @@
 			<div class="threads">
 				{#each $threads as thread}
 					<div class="thread-container">
-						<button class="thread" on:click={() => handleClickThread(thread)}>
+						<a class="thread" on:click={() => handleClickThread(thread)} href={`/comments/${thread.id}`}>
 							<h2>{thread.title}</h2>
 							<div class="info">
 								<p class="creator">
@@ -64,14 +64,13 @@
 							</div>
 							<p>Created at: {new Date(thread.createdAt).toLocaleString()}</p>
 							<p>Updated at: {new Date(thread.updatedAt).toLocaleString()}</p>
-						</button>
+						</a>
 						{#if $user && thread.userId === $user.id}
 							<div class="tag-manager-container">
 								<TagManager
 									threadId={thread.id}
 									existingTags={thread.tags || []}
-									onTagsChanged={() => {
-										getThreads();
+									onTagsChanged={async () => {
 										tagsChanged = true;
 									}}
 									tagsChanged={tagsChanged}

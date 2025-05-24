@@ -122,7 +122,7 @@
 		margin-bottom: 20px;
 		background: #333;
 		display: flex;
-		gap: 5px;
+		gap: 8px;
 		flex-direction: column;
 	}
 
@@ -139,6 +139,7 @@
 
 	:global(button) {
 		padding: 5px;
+		font-family: 'Times New Roman', Times, 'serif';
 		border-radius: 4px;
 		background-color: white;
 		color: black;

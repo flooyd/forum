@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { token } from '../../lib/stores';
+	import { token, tagManagerOpen } from '../../lib/stores';
 
 	export let threadId: number;
 	export let existingTags: any[] = [];
@@ -16,6 +16,7 @@
 	let isCreatingTag = false;
 
 	onMount(async () => {
+		console.log('TagManager mounted with threadId:', threadId);
 		await loadAllTags();
 		filteredTags = getAvailableTags();
 	});
@@ -100,7 +101,6 @@
 				const newTag = await response.json();
 				allTags = [...allTags, newTag];
 				filteredTags = getAvailableTags();
-				onTagsChanged();
 				newTagName = '';
 				newTagColor = 'lightblue';
 				isCreatingTag = false;
@@ -122,7 +122,6 @@
 		) {
 			return;
 		}
-		onTagsChanged();
 
 		try {
 			const response = await fetch('/tags', {
@@ -139,7 +138,7 @@
 				allTags = allTags.filter((tag) => tag.id !== tagId);
 				// Remove from selectedTags if it was selected
 				selectedTags = selectedTags.filter((tag) => tag.id !== tagId);
-				onTagsChanged();
+				filteredTags = getAvailableTags();
 			} else {
 				const error = await response.json();
 				alert(`Failed to delete tag: ${error.error || 'Unknown error'}`);
@@ -156,9 +155,11 @@
 		tagsChanged = false;
 	};
 
-	$: if (tagsChanged && isManaging) {
+	$: if ($tagManagerOpen === Number(threadId)) {
 		changedTags();
 		console.log('hi');
+	} else {
+		isManaging = false;
 	}
 </script>
 
@@ -235,7 +236,10 @@
 			{/if}
 		</div>
 	{/if}
-    <button class="manage-button" on:click={() => (isManaging = !isManaging)}>
+    <button class="manage-button" on:click={() => {
+		isManaging = !isManaging;
+		$tagManagerOpen = isManaging ? Number(threadId) : null;
+	}}>
 		{isManaging ? 'Done' : 'Manage Tags'}
 	</button>
 </div>
