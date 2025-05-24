@@ -100,4 +100,8 @@
 	.registerForm {
 		margin-bottom: 10px;
 	}
+
+	button {
+		margin-top: 5px;
+	}
 </style>

@@ -48,4 +48,8 @@
 		color: yellow;
 		margin: 10px 0px;
 	}
+
+	button {
+		margin-top: 5px;
+	}
 </style>

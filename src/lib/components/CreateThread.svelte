@@ -49,4 +49,7 @@
     input {
         max-width: calc(100vw - 40px);
     }
+    button {
+        margin-top: 5px;
+    }
 </style>
