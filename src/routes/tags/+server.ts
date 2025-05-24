@@ -33,6 +33,15 @@ export const POST = async ({ request, locals }) => {
       return json({ error: 'Tag name is required' }, { status: 400 });
     }
 
+    // Check if a tag with the same name already exists
+    const existingTag = await db.query.tagsTable.findFirst({
+      where: eq(tagsTable.name, name.trim())
+    });
+
+    if (existingTag) {
+      return json({ error: 'A tag with this name already exists' }, { status: 409 });
+    }
+
     const now = new Date();
     const [tag] = await db.insert(tagsTable).values({
       name: name.trim(),
