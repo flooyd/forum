@@ -57,7 +57,7 @@
 							<h2>{thread.title}</h2>
 							<div class="info">
 								<p class="creator">
-									<img src={thread.avatar} alt="thread creator avatar" />
+									<img src={thread.avatar ? thread.avatar : ''} alt="thread creator avatar" />
 									{thread.displayName}
 								</p>
 								<p>Replies: {thread.commentCount}</p>
