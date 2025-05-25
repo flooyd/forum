@@ -76,7 +76,7 @@ export const GET = async ({ locals }) => {
                 eq(commentsTable.threadId, threadsTable.id)
             )
             .groupBy(threadsTable.id, usersTable.displayName, usersTable.avatar)
-            .orderBy(desc(threadsTable.createdAt));        // Fetch tags for each thread
+            .orderBy(desc(threadsTable.updatedAt));        // Fetch tags for each thread
         const threadsWithTags = await Promise.all(
             threadsWithUsersAndCounts.map(async (thread: any) => {
                 const tags = await db
