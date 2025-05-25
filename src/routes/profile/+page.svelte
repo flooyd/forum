@@ -38,10 +38,9 @@
 	<label>
 		Avatar URL:
 		<input type="text" bind:value={$user.avatar} />
-	</label>
-	<button type="submit">Update Profile</button>
+	</label>	<button type="submit">Update Profile</button>
 </form>
-<img src="{$user.avatar}" alt="User Avatar" />
+<img src="{$user.avatar || '/question-mark.webp'}" alt="User Avatar" />
 
 <style>
 	h2 {

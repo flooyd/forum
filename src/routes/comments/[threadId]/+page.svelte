@@ -153,10 +153,9 @@
 			<div class="comments">
 				{#each comments as comment}
 					<div class="comment">
-						{@html formatComment(comment.content)}
-						<div class="commentInfo">
+						{@html formatComment(comment.content)}						<div class="commentInfo">
 							<p class="creator">
-								<img src={comment.avatar} alt="comment author avatar" />{comment.displayName}
+								<img src={comment.avatar || '/question-mark.webp'} alt="comment author avatar" />{comment.displayName}
 							</p>
 							<div class="commentInfoDates">
 								<p>Commented on {new Date(comment.createdAt).toLocaleString()}</p>

@@ -55,10 +55,9 @@
 				{#each $threads as thread}
 					<div class="thread-container">
 						<a class="thread" on:click={() => handleClickThread(thread)} href={`/comments/${thread.id}`}>
-							<h2>{thread.title}</h2>
-							<div class="info">
+							<h2>{thread.title}</h2>							<div class="info">
 								<p class="creator">
-									<img src={thread.avatar ? thread.avatar : ''} alt="thread creator avatar" />
+									<img src={thread.avatar || '/question-mark.webp'} alt="thread creator avatar" />
 									{thread.displayName}
 								</p>
 								<p>Replies: {thread.commentCount}</p>
