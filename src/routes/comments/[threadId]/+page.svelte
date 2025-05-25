@@ -128,7 +128,8 @@
 	};
 
 	const fetchTags = async () => {
-		const response = await fetch('/tags', {
+		const threadId = window.location.pathname.split('/')[2];
+		const response = await fetch(`/thread-tags/${threadId}`, {
 			method: 'GET',
 			headers: {
 				'Content-Type': 'application/json',

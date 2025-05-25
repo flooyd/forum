@@ -134,9 +134,7 @@
 			});
 
 			if (response.ok) {
-				// Remove from allTags list
 				allTags = allTags.filter((tag) => tag.id !== tagId);
-				// Remove from selectedTags if it was selected
 				selectedTags = selectedTags.filter((tag) => tag.id !== tagId);
 				filteredTags = getAvailableTags();
 			} else {
@@ -236,10 +234,13 @@
 			{/if}
 		</div>
 	{/if}
-    <button class="manage-button" on:click={() => {
-		isManaging = !isManaging;
-		$tagManagerOpen = isManaging ? Number(threadId) : null;
-	}}>
+	<button
+		class="manage-button"
+		on:click={() => {
+			isManaging = !isManaging;
+			$tagManagerOpen = isManaging ? Number(threadId) : null;
+		}}
+	>
 		{isManaging ? 'Done' : 'Manage Tags'}
 	</button>
 </div>
