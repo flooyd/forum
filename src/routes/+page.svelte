@@ -6,6 +6,7 @@
 	import TagManager from '$lib/components/TagManager.svelte';
 	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
+	import TagDisplay from '$lib/components/TagDisplay.svelte';
 
 	let ready = false;
 	let tagsChanged = false;
@@ -75,6 +76,10 @@
 									}}
 									tagsChanged={tagsChanged}
 								/>
+							</div>
+						{:else}
+							<div class="tag-manager-container">
+								<TagDisplay tags={thread.tags || []} maxDisplay={3} />
 							</div>
 						{/if}
 					</div>
