@@ -11,15 +11,12 @@
                 Authorization: `Bearer ${$token}`
             },
             body: JSON.stringify({ title })
-        });
-
-        if (response.ok) {
-            // Handle successful thread creation
+        });        if (response.ok) {
             const data = await response.json();
 			const newThread = data.thread[0];
 			newThread.avatar = $user.avatar;
 			newThread.displayName = $user.displayName;
-            $threads = [...$threads, newThread];
+            $threads = [newThread, ...$threads];
 			console.log($threads);
 			
 			// If there's an initial comment, add it to the thread
