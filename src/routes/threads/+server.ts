@@ -55,7 +55,7 @@ export const GET = async ({ locals }) => {
             headers: { 'Content-Type': 'application/json' }
         });
     }
-    
+
     try {
         const threadsWithUsersAndCounts = await db
             .select({
@@ -72,7 +72,7 @@ export const GET = async ({ locals }) => {
             .innerJoin(usersTable,
                 eq(usersTable.id, threadsTable.userId)
             )
-            .leftJoin(commentsTable, 
+            .leftJoin(commentsTable,
                 eq(commentsTable.threadId, threadsTable.id)
             )
             .groupBy(threadsTable.id, usersTable.displayName, usersTable.avatar)
@@ -95,15 +95,66 @@ export const GET = async ({ locals }) => {
                     tags
                 };
             })
-        );
-
-        return new Response(JSON.stringify({ success: true, threads: threadsWithTags }), {
+        ); return new Response(JSON.stringify({ success: true, threads: threadsWithTags }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
     } catch (error) {
         console.error('Error fetching threads:', error);
         return new Response(JSON.stringify({ success: false, message: 'Error fetching threads' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+export const DELETE = async ({ request, locals }) => {
+    // Check if the user is authenticated
+    if (!locals.user) {
+        return new Response(JSON.stringify({ success: false, message: 'User not authenticated' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    try {
+        const { threadId } = await request.json();
+
+        // Verify the thread exists and belongs to the user
+        const thread = await db.query.threadsTable.findFirst({
+            where: eq(threadsTable.id, Number(threadId))
+        });
+
+        if (!thread) {
+            return new Response(JSON.stringify({ success: false, message: 'Thread not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        if (thread.userId !== Number(locals.user.id)) {
+            return new Response(JSON.stringify({ success: false, message: 'Unauthorized to delete this thread' }), {
+                status: 403,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Delete associated thread tags first (foreign key constraint)
+        await db.delete(threadTagsTable).where(eq(threadTagsTable.threadId, Number(threadId)));
+
+        // Delete associated comments
+        await db.delete(commentsTable).where(eq(commentsTable.threadId, Number(threadId)));
+
+        // Delete the thread
+        await db.delete(threadsTable).where(eq(threadsTable.id, Number(threadId)));
+
+        return new Response(JSON.stringify({ success: true, message: 'Thread deleted successfully' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('Error deleting thread:', error);
+        return new Response(JSON.stringify({ success: false, message: 'Error deleting thread' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
         });

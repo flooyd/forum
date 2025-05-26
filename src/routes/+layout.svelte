@@ -145,6 +145,7 @@
 		color: black;
 		border: 2px solid lightblue;
 		cursor: pointer;
+		height: fit-content;
 	}
 
 	:global(button:hover) {

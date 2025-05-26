@@ -85,8 +85,14 @@
 		actionComment = { ...comment };
 		$editCommentModal = true;
 	};
-
 	const deleteComment = async (commentId: string) => {
+		// Show confirmation dialog
+		const confirmed = confirm('Are you sure you want to delete this comment? This action cannot be undone.');
+		
+		if (!confirmed) {
+			return; // User cancelled, don't delete
+		}
+
 		const threadId = window.location.pathname.split('/')[2];
 		const response = await fetch(`/comments/${threadId}`, {
 			method: 'DELETE',
