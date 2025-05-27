@@ -7,20 +7,42 @@
 
 	const closeModal = () => {
 		$filterThreadsModal = false;
-	};
-
-	const filterThreads = () => {
+	};	const filterThreads = () => {
 		const selectedTags = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
-			.map((checkbox) => Number((checkbox as HTMLInputElement).value)); // Convert to numbers
+			.map((checkbox) => {
+				const value = (checkbox as HTMLInputElement).value;
+				const numValue = Number(value);
+				console.log('Checkbox value:', value, 'as number:', numValue);
+				return numValue;
+			});
+
+		console.log('Selected tag IDs:', selectedTags);
+		console.log('Original threads sample:', $originalThreads[0]);
+		console.log('Sample thread tags:', $originalThreads[0]?.tags);
+		console.log('All available tags:', allTags);
 
 		$activeFilters = selectedTags;
 		
 		if (selectedTags.length > 0) {
 			// Filter from original threads, not current threads
-			$threads = $originalThreads.filter((thread) =>
-				thread.tags.some((tag: { id: number; }) => selectedTags.includes(tag.id))
-			);
-			console.log('Filtered threads:', $threads);
+			const filteredResults = $originalThreads.filter((thread) => {
+				if (!thread.tags || thread.tags.length === 0) {
+					console.log('Thread', thread.id, 'has no tags');
+					return false;
+				}
+				
+				const hasMatchingTag = thread.tags.some((tag: any) => {
+					// Ensure both values are numbers for comparison
+					const tagId = Number(tag.id);
+					const isMatch = selectedTags.includes(tagId);
+					console.log('Checking tag ID:', tag.id, '(as number:', tagId, ') against selected:', selectedTags, 'match:', isMatch);
+					return isMatch;
+				});
+				console.log('Thread', thread.id, '(', thread.title, ') has matching tag:', hasMatchingTag);
+				return hasMatchingTag;
+			});
+			$threads = filteredResults;
+			console.log('Filtered threads count:', filteredResults.length);
 		} else {
 			// If no filters, show all original threads
 			$threads = [...$originalThreads];
@@ -52,10 +74,10 @@
 				Authorization: `Bearer ${$token}`
 			}
 		})
-			.then((response) => response.json())
-			.then((data) => {
+			.then((response) => response.json())			.then((data) => {
 				allTags = data;
 				filteredTags = allTags; // Initially show all tags
+				console.log('Loaded tags:', allTags);
 				
 				// Pre-check active filters
 				setTimeout(() => {

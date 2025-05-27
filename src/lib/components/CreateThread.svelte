@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { token, createThreadModal, threads, user } from '../../lib/stores';
+	import { token, createThreadModal, threads, originalThreads, user } from '../../lib/stores';
 	let title = '';
 	let initialComment = '';
 
@@ -11,12 +11,14 @@
                 Authorization: `Bearer ${$token}`
             },
             body: JSON.stringify({ title })
-        });        if (response.ok) {
+        });    		if (response.ok) {
             const data = await response.json();
 			const newThread = data.thread[0];
 			newThread.avatar = $user.avatar;
 			newThread.displayName = $user.displayName;
+			newThread.tags = []; // Initialize empty tags array
             $threads = [newThread, ...$threads];
+			$originalThreads = [newThread, ...$originalThreads]; // Add to original threads too
 			console.log($threads);
 			
 			// If there's an initial comment, add it to the thread
