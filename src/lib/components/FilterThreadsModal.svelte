@@ -41,7 +41,7 @@
 			});
 			// Create deep copy to avoid reference issues
 			$threads = JSON.parse(JSON.stringify(filteredResults));
-			console.log('Filtered', filteredResults.length, 'threads');
+			console.log('Filtered', filteredResults.length, 'threads', $threads);
 		} else {
 			// If no filters, show all original threads (deep copy)
 			$threads = JSON.parse(JSON.stringify($originalThreads));
