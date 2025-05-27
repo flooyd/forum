@@ -118,22 +118,9 @@
 	}
 
 	.buttons {
+		margin-top: 10px;
 		display: flex;
-		gap: 10px;
-		margin-top: 15px;
-		justify-content: center;
-	}
-
-	.buttons button {
-		padding: 8px 16px;
-		border: 1px solid white;
-		border-radius: 4px;
-		background: black;
-		color: white;
-		cursor: pointer;
-	}
-
-	.buttons button:hover {
-		background: #333;
+		align-items: center;
+		gap: 8px;
 	}
 </style>
