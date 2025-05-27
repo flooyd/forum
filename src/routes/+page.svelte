@@ -104,7 +104,7 @@
 			<FilterThreadsModal />
 		{/if}
 		<div class="threads">
-			{#each $threads as thread}
+			{#each $threads as thread, index (thread.id)}
 				<div class="thread-container">
 					<a
 						class="thread"
