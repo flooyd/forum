@@ -29,7 +29,7 @@
 		if (response.ok) {
 			const data = await response.json();
 			$threads = data.threads;
-			$originalThreads = data.threads; // Store original data for filtering
+			$originalThreads = JSON.parse(JSON.stringify(data.threads)); // Deep copy to avoid reference issues
 			console.log($threads);
 		} else {
 			console.error('Failed to fetch threads');
@@ -60,7 +60,9 @@
 		if (response.ok) {
 			// Remove the thread from both current and original thread stores
 			$threads = $threads.filter((thread) => thread.id !== threadId);
-			$originalThreads = $originalThreads.filter((thread) => thread.id !== threadId);
+			$originalThreads = JSON.parse(
+				JSON.stringify($originalThreads.filter((thread) => thread.id !== threadId))
+			);
 		} else {
 			console.error('Failed to delete thread');
 			alert('Failed to delete thread. Please try again.');
@@ -83,7 +85,7 @@
 					<button
 						on:click={() => {
 							$activeFilters = [];
-							$threads = [...$originalThreads];
+							$threads = JSON.parse(JSON.stringify($originalThreads)); // Deep copy
 						}}
 						class="clear-filters"
 					>
@@ -118,7 +120,8 @@
 						<p>Updated at: {new Date(thread.updatedAt).toLocaleString()}</p>
 					</a>
 					{#if $user && thread.userId === $user.id}
-						<div class="tag-manager-container">							<TagManager
+						<div class="tag-manager-container">
+							<TagManager
 								threadId={thread.id}
 								existingTags={thread.tags || []}
 								onTagsChanged={async () => {
