@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { createThreadModal, currentPage } from '../lib/stores';
-	import { user, token, threads } from '../lib/stores';
+	import { onMount } from 'svelte';	import { createThreadModal, filterThreadsModal, currentPage } from '../lib/stores';
+	import { user, token, threads, originalThreads, activeFilters } from '../lib/stores';
 	import CreateThread from '$lib/components/CreateThread.svelte';
+	import FilterThreadsModal from '$lib/components/FilterThreadsModal.svelte';
 	import TagManager from '$lib/components/TagManager.svelte';
 	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
@@ -16,7 +16,6 @@
 		await getThreads();
 		ready = true;
 	});
-
 	const getThreads = async () => {
 		if (!$user) return;
 		const response = await fetch('/threads', {
@@ -29,6 +28,7 @@
 		if (response.ok) {
 			const data = await response.json();
 			$threads = data.threads;
+			$originalThreads = data.threads; // Store original data for filtering
 			console.log($threads);
 		} else {
 			console.error('Failed to fetch threads');
@@ -68,15 +68,24 @@
 </script>
 
 {#if $user && ready}
-	<div transition:fade>
-		<div class="toolbarContainer">
+	<div transition:fade>		<div class="toolbarContainer">
 			<div class="toolbar">
 				<button on:click={() => ($createThreadModal = true)}>Create Thread</button>
-				<button>Filter</button>
+				<button on:click={() => ($filterThreadsModal = true)} class:active={$activeFilters.length > 0}>
+					Filter {$activeFilters.length > 0 ? `(${$activeFilters.length})` : ''}
+				</button>
+				{#if $activeFilters.length > 0}
+					<button on:click={() => { $activeFilters = []; $threads = [...$originalThreads]; }} class="clear-filters">
+						Clear Filters
+					</button>
+				{/if}
 			</div>
 		</div>
 		{#if $createThreadModal}
 			<CreateThread />
+		{/if}
+		{#if $filterThreadsModal}
+			<FilterThreadsModal />
 		{/if}
 		<div class="threads">
 			{#each $threads as thread}
@@ -135,9 +144,6 @@
 		background: black;
 	}
 	.toolbar {
-		border: 2px solid white;
-		border-radius: 4px;
-		padding: 8px;
 		background: black;
 	}
 	.threads {
@@ -170,10 +176,23 @@
 		align-items: center;
 		padding: 8px;
 		border-top: 1px solid #333;
-	}
-	.info {
+	}	.info {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+	}
+	
+	.toolbar button.active {
+		background: #4CAF50;
+		border-color: #4CAF50;
+	}
+	
+	.clear-filters {
+		background: #f44336 !important;
+		border-color: #f44336 !important;
+	}
+	
+	.clear-filters:hover {
+		background: #d32f2f !important;
 	}
 </style>

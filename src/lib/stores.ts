@@ -11,9 +11,23 @@ const user: Writable<any> | null = writable({
     updatedAt: "",
 });
 const createThreadModal = writable(false);
-const editCommentModal: Writable<boolean | null> = writable(null);;
+const editCommentModal: Writable<boolean | null> = writable(null);
+const filterThreadsModal: Writable<boolean | null> = writable(null);
 const threads: Writable<any[]> = writable([]);
+const originalThreads: Writable<any[]> = writable([]);
+const activeFilters: Writable<number[]> = writable([]);
 const tagManagerOpen: Writable<number | null> = writable(null);
 
 
-export { currentPage, token, user, createThreadModal, editCommentModal, threads, tagManagerOpen };
+export {
+    currentPage,
+    token,
+    user,
+    createThreadModal,
+    editCommentModal, 
+    threads, 
+    originalThreads,
+    activeFilters,
+    tagManagerOpen, 
+    filterThreadsModal
+};
