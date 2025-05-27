@@ -68,6 +68,9 @@
 			alert('Failed to delete thread. Please try again.');
 		}
 	};
+
+	$: console.log('threads');
+	$: console.log($threads);
 </script>
 
 {#if $user && ready}
