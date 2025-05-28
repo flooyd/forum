@@ -201,16 +201,7 @@
 	}
 
 	.toolbar button.active {
-		background: #4caf50;
-		border-color: #4caf50;
-	}
-
-	.clear-filters {
-		background: #f44336 !important;
-		border-color: #f44336 !important;
-	}
-
-	.clear-filters:hover {
-		background: #d32f2f !important;
+		background: yellow;
+		border-color: white;
 	}
 </style>
