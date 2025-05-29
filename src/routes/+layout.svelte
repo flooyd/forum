@@ -1,17 +1,30 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { currentPage, user, token } from '../lib/stores';
+	import { currentPage, user, token, isAdmin} from '../lib/stores';
 	import { fade } from 'svelte/transition';
 
 	let ready = false;
 
-	onMount(() => {
+	onMount(async () => {
 		ready = true;
 		$user = localStorage.getItem('user')
 			? JSON.parse(localStorage.getItem('user') as string)
 			: null;
 		$token = localStorage.getItem('token');
-		console.log($token);
+
+		const response = await fetch('/admin?action=stats', {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${$token}`
+			}
+		});
+
+		if (response.ok) {
+			$isAdmin = true;
+		} else {
+			console.error('Failed to fetch admin stats');
+		}
 	});
 
 	$: if (ready) {

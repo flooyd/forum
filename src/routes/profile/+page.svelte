@@ -1,9 +1,8 @@
 <script lang='ts'>
 	import UsersTable from '$lib/components/UsersTable.svelte';
-	import { user, token, currentPage } from '$lib/stores';
+	import { user, token, currentPage, isAdmin } from '$lib/stores';
 	import { onMount } from 'svelte';
 
-	let isAdmin = false;
 	let adminStats: any = null;
 
 	onMount(async () => {
@@ -21,7 +20,6 @@
 			const data = await response.json();
 			console.log('Admin stats:', data);
 			adminStats = data;
-			isAdmin = true;
 		} else {
 			console.error('Failed to fetch admin stats');
 		}
@@ -63,7 +61,7 @@
 	</label>	<button type="submit">Update Profile</button>
 </form>
 <img src="{$user.avatar || '/question-mark.webp'}" alt="User Avatar" />
-{#if isAdmin}
+{#if $isAdmin}
 	<h2>Admin Stats</h2>
 	{#if adminStats}
 		<p>Total Users: {adminStats.stats.totalUsers}</p>

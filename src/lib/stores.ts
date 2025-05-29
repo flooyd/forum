@@ -18,6 +18,7 @@ const originalThreads: Writable<any[]> = writable([]);
 const activeFilters: Writable<number[]> = writable([]);
 const tagManagerOpen: Writable<number | null> = writable(null);
 const users: Writable<any[]> = writable([]);
+const isAdmin: Writable<boolean> = writable(false);
 
 
 export {
@@ -31,5 +32,6 @@ export {
     activeFilters,
     tagManagerOpen, 
     filterThreadsModal,
-    users
+    users,
+    isAdmin
 };

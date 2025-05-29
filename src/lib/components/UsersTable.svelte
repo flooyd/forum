@@ -42,8 +42,14 @@
 		{#each $users as user}
 			<tr>
 				<td>{user.id}</td>
-				<td><img src={user.avatar} alt="User Avatar" width="42" height="42" /></td>
-
+				<td>
+					<img
+						src={user.avatar ? user.avatar : '/question-mark.webp'}
+						alt="User Avatar"
+						width="42"
+						height="42"
+					/>
+				</td>
 				<td>{user.displayName}</td>
 				<td>{user.email}</td>
 				<td>{user.isAdmin ? 'Yes' : 'No'}</td>
@@ -53,19 +59,20 @@
 </table>
 
 <style>
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-    }
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		margin-top: 10px;
+	}
 
-    th, td {
-        border: 1px solid white;
-        padding: 5px;
-        text-align: left;
-    }
+	th,
+	td {
+		border: 1px solid white;
+		padding: 5px;
+		text-align: left;
+	}
 
-    img {
-        border-radius: 50%;
-    }
+	img {
+		border-radius: 50%;
+	}
 </style>
