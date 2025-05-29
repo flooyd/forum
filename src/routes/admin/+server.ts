@@ -1,26 +1,18 @@
 import { db } from '$lib/server/db';
 import { usersTable, threadsTable, commentsTable } from '$lib/server/db/schema.js';
 import { eq, sql, count } from 'drizzle-orm';
+import { checkAdminAuth, createUnauthorizedResponse, clearAdminCache } from '$lib/server/auth';
 
 export const GET = async ({ url, locals }) => {
-    // Check if the user is authenticated and is an admin
-    if (!locals.user) {
-        return new Response(JSON.stringify({ success: false, message: 'User not authenticated' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    // Check authentication and admin status
+    const auth = await checkAdminAuth(locals);
+    
+    if (!auth.isAuthenticated) {
+        return createUnauthorizedResponse('User not authenticated', 401);
     }
-
-    // Verify the user is an admin
-    const currentUser = await db.query.usersTable.findFirst({
-        where: eq(usersTable.id, Number(locals.user.id))
-    });
-
-    if (!currentUser || !currentUser.isAdmin) {
-        return new Response(JSON.stringify({ success: false, message: 'Unauthorized. Admin access required.' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    
+    if (!auth.isAdmin) {
+        return createUnauthorizedResponse('Unauthorized. Admin access required.');
     }
 
     try {
@@ -181,24 +173,15 @@ async function getRecentActivity() {
 }
 
 export const POST = async ({ request, locals }) => {
-    // Check if the user is authenticated and is an admin
-    if (!locals.user) {
-        return new Response(JSON.stringify({ success: false, message: 'User not authenticated' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    // Check authentication and admin status
+    const auth = await checkAdminAuth(locals);
+    
+    if (!auth.isAuthenticated) {
+        return createUnauthorizedResponse('User not authenticated', 401);
     }
-
-    // Verify the user is an admin
-    const currentUser = await db.query.usersTable.findFirst({
-        where: eq(usersTable.id, Number(locals.user.id))
-    });
-
-    if (!currentUser || !currentUser.isAdmin) {
-        return new Response(JSON.stringify({ success: false, message: 'Unauthorized. Admin access required.' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    
+    if (!auth.isAdmin) {
+        return createUnauthorizedResponse('Unauthorized. Admin access required.');
     }
 
     try {
@@ -210,7 +193,7 @@ export const POST = async ({ request, locals }) => {
             case 'promote-user':
                 return await promoteUser(data.userId);
             case 'demote-user':
-                return await demoteUser(data.userId, Number(locals.user.id));
+                return await demoteUser(data.userId, auth.userId!);
             default:
                 return new Response(JSON.stringify({ 
                     success: false, 
@@ -255,9 +238,7 @@ async function promoteUser(userId: number) {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
-        }
-
-        // Promote user to admin
+        }        // Promote user to admin
         const updatedUser = await db
             .update(usersTable)
             .set({ 
@@ -266,6 +247,9 @@ async function promoteUser(userId: number) {
             })
             .where(eq(usersTable.id, Number(userId)))
             .returning();
+
+        // Clear admin cache for this user since status changed
+        clearAdminCache(Number(userId));
 
         return new Response(JSON.stringify({ 
             success: true, 
@@ -318,9 +302,7 @@ async function demoteUser(userId: number, currentUserId: number) {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
-        }
-
-        // Demote user from admin
+        }        // Demote user from admin
         const updatedUser = await db
             .update(usersTable)
             .set({ 
@@ -329,6 +311,9 @@ async function demoteUser(userId: number, currentUserId: number) {
             })
             .where(eq(usersTable.id, Number(userId)))
             .returning();
+
+        // Clear admin cache for this user since status changed
+        clearAdminCache(Number(userId));
 
         return new Response(JSON.stringify({ 
             success: true, 
@@ -375,9 +360,7 @@ async function bulkUpdateUsers(data: { userIds: number[], updates: any }) {
             });
         }
 
-        sanitizedUpdates.updatedAt = new Date();
-
-        // Perform bulk update
+        sanitizedUpdates.updatedAt = new Date();        // Perform bulk update
         const results = [];
         for (const userId of userIds) {
             try {
@@ -388,10 +371,14 @@ async function bulkUpdateUsers(data: { userIds: number[], updates: any }) {
                     .returning();
                 
                 if (updatedUser.length > 0) {
+                    // Clear admin cache if isAdmin field was updated
+                    if ('isAdmin' in sanitizedUpdates) {
+                        clearAdminCache(Number(userId));
+                    }
                     results.push({ userId, success: true, user: updatedUser[0] });
                 } else {
                     results.push({ userId, success: false, error: 'User not found' });
-                }            } catch (error) {
+                }} catch (error) {
                 results.push({ userId, success: false, error: error instanceof Error ? error.message : 'Unknown error' });
             }
         }

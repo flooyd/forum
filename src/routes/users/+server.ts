@@ -1,26 +1,18 @@
 import { db } from '$lib/server/db';
 import { usersTable } from '$lib/server/db/schema.js';
 import { eq, ilike, or } from 'drizzle-orm';
+import { checkAdminAuth, createUnauthorizedResponse, clearAdminCache } from '$lib/server/auth';
 
 export const GET = async ({ url, locals }) => {
-    // Check if the user is authenticated and is an admin
-    if (!locals.user) {
-        return new Response(JSON.stringify({ success: false, message: 'User not authenticated' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    // Check authentication and admin status
+    const auth = await checkAdminAuth(locals);
+    
+    if (!auth.isAuthenticated) {
+        return createUnauthorizedResponse('User not authenticated', 401);
     }
-
-    // Verify the user is an admin
-    const currentUser = await db.query.usersTable.findFirst({
-        where: eq(usersTable.id, Number(locals.user.id))
-    });
-
-    if (!currentUser || !currentUser.isAdmin) {
-        return new Response(JSON.stringify({ success: false, message: 'Unauthorized. Admin access required.' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    
+    if (!auth.isAdmin) {
+        return createUnauthorizedResponse('Unauthorized. Admin access required.');
     }
 
     try {
@@ -101,24 +93,15 @@ export const GET = async ({ url, locals }) => {
 };
 
 export const PATCH = async ({ request, locals }) => {
-    // Check if the user is authenticated and is an admin
-    if (!locals.user) {
-        return new Response(JSON.stringify({ success: false, message: 'User not authenticated' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    // Check authentication and admin status
+    const auth = await checkAdminAuth(locals);
+    
+    if (!auth.isAuthenticated) {
+        return createUnauthorizedResponse('User not authenticated', 401);
     }
-
-    // Verify the user is an admin
-    const currentUser = await db.query.usersTable.findFirst({
-        where: eq(usersTable.id, Number(locals.user.id))
-    });
-
-    if (!currentUser || !currentUser.isAdmin) {
-        return new Response(JSON.stringify({ success: false, message: 'Unauthorized. Admin access required.' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    
+    if (!auth.isAdmin) {
+        return createUnauthorizedResponse('Unauthorized. Admin access required.');
     }
 
     try {
@@ -141,10 +124,8 @@ export const PATCH = async ({ request, locals }) => {
                 status: 404,
                 headers: { 'Content-Type': 'application/json' }
             });
-        }
-
-        // Prevent admin from removing their own admin status (safety measure)
-        if (Number(userId) === Number(locals.user.id) && updates.isAdmin === 0) {
+        }        // Prevent admin from removing their own admin status (safety measure)
+        if (Number(userId) === auth.userId && updates.isAdmin === 0) {
             return new Response(JSON.stringify({ 
                 success: false, 
                 message: 'Cannot remove admin status from yourself' 
@@ -175,9 +156,7 @@ export const PATCH = async ({ request, locals }) => {
         }
 
         // Add updatedAt timestamp
-        sanitizedUpdates.updatedAt = new Date();
-
-        // Update the user
+        sanitizedUpdates.updatedAt = new Date();        // Update the user
         const updatedUser = await db
             .update(usersTable)
             .set(sanitizedUpdates)
@@ -189,6 +168,11 @@ export const PATCH = async ({ request, locals }) => {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' }
             });
+        }
+
+        // Clear admin cache if isAdmin field was updated
+        if ('isAdmin' in sanitizedUpdates) {
+            clearAdminCache(Number(userId));
         }
 
         // Return updated user (without password)
@@ -212,24 +196,15 @@ export const PATCH = async ({ request, locals }) => {
 };
 
 export const DELETE = async ({ request, locals }) => {
-    // Check if the user is authenticated and is an admin
-    if (!locals.user) {
-        return new Response(JSON.stringify({ success: false, message: 'User not authenticated' }), {
-            status: 401,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    // Check authentication and admin status
+    const auth = await checkAdminAuth(locals);
+    
+    if (!auth.isAuthenticated) {
+        return createUnauthorizedResponse('User not authenticated', 401);
     }
-
-    // Verify the user is an admin
-    const currentUser = await db.query.usersTable.findFirst({
-        where: eq(usersTable.id, Number(locals.user.id))
-    });
-
-    if (!currentUser || !currentUser.isAdmin) {
-        return new Response(JSON.stringify({ success: false, message: 'Unauthorized. Admin access required.' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-        });
+    
+    if (!auth.isAdmin) {
+        return createUnauthorizedResponse('Unauthorized. Admin access required.');
     }
 
     try {
@@ -240,10 +215,8 @@ export const DELETE = async ({ request, locals }) => {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
-        }
-
-        // Prevent admin from deleting themselves
-        if (Number(userId) === Number(locals.user.id)) {
+        }        // Prevent admin from deleting themselves
+        if (Number(userId) === auth.userId) {
             return new Response(JSON.stringify({ 
                 success: false, 
                 message: 'Cannot delete your own account' 
@@ -263,9 +236,7 @@ export const DELETE = async ({ request, locals }) => {
                 status: 404,
                 headers: { 'Content-Type': 'application/json' }
             });
-        }
-
-        // TODO: In a production environment, you might want to:
+        }        // TODO: In a production environment, you might want to:
         // 1. Soft delete (mark as deleted) instead of hard delete
         // 2. Handle cascading deletions for user's threads, comments, etc.
         // 3. Archive user data before deletion
@@ -273,7 +244,7 @@ export const DELETE = async ({ request, locals }) => {
         // For now, we'll implement a simple hard delete
         // Note: This might fail if there are foreign key constraints
         // In that case, you'd need to handle cascading deletions first
-
+        
         const deletedUser = await db
             .delete(usersTable)
             .where(eq(usersTable.id, Number(userId)))
@@ -285,6 +256,9 @@ export const DELETE = async ({ request, locals }) => {
                 headers: { 'Content-Type': 'application/json' }
             });
         }
+
+        // Clear admin cache for deleted user
+        clearAdminCache(Number(userId));
 
         return new Response(JSON.stringify({ 
             success: true, 

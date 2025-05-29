@@ -17,6 +17,7 @@ const threads: Writable<any[]> = writable([]);
 const originalThreads: Writable<any[]> = writable([]);
 const activeFilters: Writable<number[]> = writable([]);
 const tagManagerOpen: Writable<number | null> = writable(null);
+const users: Writable<any[]> = writable([]);
 
 
 export {
@@ -29,5 +30,6 @@ export {
     originalThreads,
     activeFilters,
     tagManagerOpen, 
-    filterThreadsModal
+    filterThreadsModal,
+    users
 };
