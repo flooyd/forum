@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, PgColumn, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, PgColumn, timestamp, bigint } from 'drizzle-orm/pg-core';
 
 export const usersTable = pgTable('users', {
     id: serial('id').primaryKey(),
@@ -49,6 +49,20 @@ export const threadTagsTable = pgTable('thread_tags', {
     threadId: integer('thread_id').notNull().references(() => threadsTable.id),
     tagId: integer('tag_id').notNull().references(() => tagsTable.id),
     createdAt: timestamp('created_at').notNull()
+});
+
+export const imagesTable = pgTable('images', {
+    id: serial('id').primaryKey(),
+    filename: text('filename').notNull(), // Original filename
+    storedFilename: text('stored_filename').notNull(), // UUID filename on disk
+    mimeType: text('mime_type').notNull(),
+    size: bigint('size', { mode: 'number' }).notNull(), // File size in bytes
+    uploadedBy: integer('uploaded_by').notNull().references(() => usersTable.id),
+    threadId: integer('thread_id').references(() => threadsTable.id), // If attached to a thread
+    commentId: integer('comment_id').references(() => commentsTable.id), // If attached to a comment
+    alt: text('alt'), // Alt text for accessibility
+    createdAt: timestamp('created_at').notNull(),
+    isDeleted: integer('is_deleted').notNull().default(0)
 });
 
 

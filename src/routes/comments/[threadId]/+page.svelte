@@ -3,14 +3,23 @@
 	import { currentPage, editCommentModal, user } from '../../../lib/stores';
 	import EditComment from '../../../lib/components/EditComment.svelte';
 	import TagDisplay from '../../../lib/components/TagDisplay.svelte';
+	import ImageUpload from '../../../lib/components/ImageUpload.svelte';
+	import ImageLightbox from '../../../lib/components/ImageLightbox.svelte';
 	import { fade } from 'svelte/transition';
-
 	let comments: any[] = [];
 	let tags: any[] = [];
 	let threadTitle: string = '';
 	let newComment: string = '';
 	let actionComment: any = {};
 	let ready = false;
+	let showImageUpload = false;
+	
+	// Lightbox state
+	let lightboxOpen = false;
+	let lightboxImageSrc = '';
+	let lightboxImageAlt = '';
+	let lightboxImages: any[] = [];
+	let lightboxCurrentIndex = 0;
 
 	const quoteComment = (comment: any) => {
 		// Format the quote with HTML blockquote including display name
@@ -28,7 +37,6 @@
 			}
 		}, 0);
 	};
-
 	const formatComment = (content: string) => {
 		if (!content) return '';
 
@@ -43,10 +51,17 @@
 				/&lt;blockquote data-author="([^"]+)" data-id="([^"]+)"&gt;([\s\S]*?)&lt;\/blockquote&gt;/gs,
 				(_match, author, id, quote) => {
 					// Fix: Remove extra indentation and line breaks in the template
-					return `<div class="quoted-content"><div class="quote-header">Quoted ${comments.find(c => c.id === Number(id)).displayName} <span class="quote-id">#${id}</span>:</div><div class="quote-body">${quote}</div></div>`;
+					return `<div class="quoted-content"><div class="quote-header">Quoted ${comments.find(c => c.id === Number(id))?.displayName || 'Unknown'} <span class="quote-id">#${id}</span>:</div><div class="quote-body">${quote}</div></div>`;
 				}
 			);
 		} while (sanitized !== previousSanitized); // Continue until no more changes are made
+		// Process image markdown: ![alt](url)
+		sanitized = sanitized.replace(
+			/!\[([^\]]*)\]\(([^)]+)\)/g,
+			(_match, alt, url) => {
+				return `<img src="${url}" alt="${alt}" class="comment-image clickable-image" loading="lazy" data-lightbox="true" />`;
+			}
+		);
 
 		// Check if the content was just a quote (plus maybe some whitespace)
 		const isJustQuote = /^(\s*)<div class="quoted-content">[\s\S]*<\/div>(\s*)$/.test(sanitized);
@@ -84,8 +99,7 @@
 		//clone comment to avoid mutating the original
 		actionComment = { ...comment };
 		$editCommentModal = true;
-	};
-	const deleteComment = async (commentId: string) => {
+	};	const deleteComment = async (commentId: string) => {
 		// Show confirmation dialog
 		const confirmed = confirm('Are you sure you want to delete this comment? This action cannot be undone.');
 		
@@ -107,6 +121,66 @@
 			comments = comments.filter((comment) => comment.id !== commentId);
 		} else {
 			console.error('Failed to delete comment');
+		}
+	};
+
+	const handleImageUploaded = (event: CustomEvent) => {
+		console.log('Image uploaded:', event.detail);
+		// Image upload handled by the component
+	};
+	const handleInsertImage = (event: CustomEvent) => {
+		const { markdown } = event.detail;
+		// Insert the image markdown at the current cursor position
+		if (newComment) {
+			newComment = newComment + '\n' + markdown;
+		} else {
+			newComment = markdown;
+		}
+		
+		// Focus the textarea
+		setTimeout(() => {
+			const textarea = document.querySelector('textarea');
+			if (textarea) {
+				textarea.focus();
+				textarea.setSelectionRange(newComment.length, newComment.length);
+			}
+		}, 0);
+	};
+
+	const openLightbox = (imageSrc: string, imageAlt: string) => {
+		// Collect all images from the current comment thread
+		const allImages: any[] = [];
+		
+		// Get all comment images from the page
+		const commentImages = document.querySelectorAll('.comment-image[data-lightbox="true"]');
+		commentImages.forEach((img: Element, index: number) => {
+			const imgElement = img as HTMLImageElement;
+			allImages.push({
+				url: imgElement.src,
+				alt: imgElement.alt || `Image ${index + 1}`,
+				src: imgElement.src
+			});
+		});
+		
+		// Find the index of the clicked image
+		const clickedIndex = allImages.findIndex(img => img.url === imageSrc);
+		
+		lightboxImages = allImages;
+		lightboxCurrentIndex = clickedIndex >= 0 ? clickedIndex : 0;
+		lightboxImageSrc = imageSrc;
+		lightboxImageAlt = imageAlt;
+		lightboxOpen = true;
+	};
+
+	const closeLightbox = () => {
+		lightboxOpen = false;
+	};
+
+	const handleImageClick = (event: Event) => {
+		const target = event.target as HTMLImageElement;
+		if (target && target.classList.contains('clickable-image')) {
+			event.preventDefault();
+			openLightbox(target.src, target.alt);
 		}
 	};
 
@@ -182,18 +256,48 @@
 					</div>
 				{/each}
 			</div>
-		{/if}
-		{#if $user}
+		{/if}		{#if $user}
 			<form on:submit|preventDefault={addComment}>
 				<textarea placeholder="Add a comment" bind:value={newComment}></textarea>
-				<button type="submit">Add Comment</button>
+				
+				<div class="form-actions">
+					<button 
+						type="button" 
+						class="image-toggle"
+						on:click={() => showImageUpload = !showImageUpload}
+					>
+						{showImageUpload ? 'Hide' : 'Add'} Images
+					</button>
+					<button type="submit">Add Comment</button>
+				</div>
+				
+				{#if showImageUpload}
+					<ImageUpload 
+						threadId={Number(window.location.pathname.split('/')[2])}
+						on:imageUploaded={handleImageUploaded}
+						on:insertImage={handleInsertImage}
+						multiple={true}
+						buttonText="Upload Images"
+					/>
+				{/if}
 			</form>
-		{/if}
-		{#if $editCommentModal}
+		{/if}		{#if $editCommentModal}
 			<EditComment comment={actionComment} />
 		{/if}
 	</div>
 {/if}
+
+<!-- Image Lightbox -->
+<ImageLightbox
+	bind:isOpen={lightboxOpen}
+	bind:imageSrc={lightboxImageSrc}
+	bind:imageAlt={lightboxImageAlt}
+	bind:images={lightboxImages}
+	bind:currentIndex={lightboxCurrentIndex}
+	on:close={closeLightbox}
+/>
+
+<svelte:window on:click={handleImageClick} />
 
 <style>
 	h2 {
@@ -207,12 +311,31 @@
 		padding: 10px 0px;
 		background: black;
 	}
-
 	form {
 		margin-top: 10px;
 		display: flex;
 		flex-direction: column;
 		gap: 5px;
+	}
+
+	.form-actions {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+	}
+
+	.image-toggle {
+		background: #28a745;
+		color: white;
+		border: none;
+		padding: 8px 16px;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 14px;
+	}
+
+	.image-toggle:hover {
+		background: #218838;
 	}
 
 	.comments {
@@ -274,10 +397,46 @@
 	:global(.quote-body) {
 		padding-left: 8px;
 	}
-
 	:global(.quote-id) {
 		color: #888;
 		font-size: 0.9em;
 		margin-left: 4px;
+	}
+	:global(.comment-image) {
+		max-width: 100%;
+		max-height: 400px;
+		border-radius: 4px;
+		margin: 8px 0;
+		cursor: pointer;
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
+	}
+
+	:global(.comment-image.clickable-image) {
+		border: 2px solid transparent;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	:global(.comment-image.clickable-image:hover) {
+		transform: scale(1.02);
+		border-color: #0066cc;
+		box-shadow: 0 4px 16px rgba(0, 102, 204, 0.2);
+	}
+
+	:global(.comment-image:hover) {
+		transform: scale(1.02);
+	}
+
+	/* Image lightbox effect when clicked */
+	:global(.comment-image.enlarged) {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%) scale(1);
+		max-width: 90vw;
+		max-height: 90vh;
+		z-index: 1000;
+		background: rgba(0, 0, 0, 0.9);
+		padding: 20px;
+		border-radius: 8px;
 	}
 </style>
