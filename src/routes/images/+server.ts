@@ -4,31 +4,49 @@ import { checkAdminAuth } from '$lib/server/auth';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { writeFile, mkdir } from 'fs/promises';
-import { join, dirname } from 'path';
+import { join, dirname, resolve } from 'path';
 import { existsSync } from 'fs';
 import sharp from 'sharp';
+import process from 'process';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-const UPLOAD_DIR = 'static/uploads';
+
+// Use environment variable for upload directory or fall back to default
+const UPLOAD_DIR = process.env.UPLOAD_DIR || resolve(process.cwd(), 'static', 'uploads');
 
 // Track if directory has been checked to avoid repeated file system calls
 let directoryChecked = false;
 
-async function ensureUploadDirectory(): Promise<void> {
-    if (directoryChecked) return;
+async function ensureUploadDirectory(): Promise<string> {
+    if (directoryChecked) return UPLOAD_DIR;
     
-    if (!existsSync(UPLOAD_DIR)) {
-        try {
+    try {
+        if (!existsSync(UPLOAD_DIR)) {
             await mkdir(UPLOAD_DIR, { recursive: true });
             console.log(`Created upload directory: ${UPLOAD_DIR}`);
-        } catch (error) {
-            console.error('Error creating upload directory:', error);
-            throw new Error('Failed to create upload directory');
         }
+        
+        // Test write permissions by creating a temporary file
+        const testFile = join(UPLOAD_DIR, '.write-test');
+        await writeFile(testFile, 'test');
+        
+        // Clean up test file
+        try {
+            const { unlink } = await import('fs/promises');
+            await unlink(testFile);
+        } catch (cleanupError) {
+            console.warn('Failed to clean up test file:', cleanupError);        }
+          directoryChecked = true;
+        console.log(`Upload directory verified: ${UPLOAD_DIR}`);
+        return UPLOAD_DIR;
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('Error setting up upload directory:', error);
+        console.error('Current working directory:', process.cwd());
+        console.error('Attempted upload directory:', UPLOAD_DIR);
+        throw new Error(`Failed to setup upload directory: ${errorMessage}`);
     }
-    
-    directoryChecked = true;
 }
 
 // Initialize upload directory on module load
@@ -112,10 +130,10 @@ export const POST = async ({ request, locals }) => {
         }        // Generate unique filename
         const fileExtension = file.name.split('.').pop() || 'jpg';
         const storedFilename = `${uuidv4()}.${fileExtension}`;
-        const filePath = join(UPLOAD_DIR, storedFilename);
-
-        // Ensure upload directory exists
-        await ensureUploadDirectory();
+        
+        // Ensure upload directory exists and get the actual path
+        const actualUploadDir = await ensureUploadDirectory();
+        const filePath = join(actualUploadDir, storedFilename);
 
         // Process image
         const buffer = Buffer.from(await file.arrayBuffer());
@@ -152,13 +170,20 @@ export const POST = async ({ request, locals }) => {
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
-        });
-
-    } catch (error) {
+        });    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('Error uploading image:', error);
+        console.error('Error details:', {
+            message: errorMessage,
+            uploadDir: UPLOAD_DIR,
+            cwd: process.cwd(),
+            directoryChecked,
+            error: error
+        });
+        
         return new Response(JSON.stringify({ 
             success: false, 
-            message: 'Error uploading image' 
+            message: `Error uploading image: ${errorMessage}` 
         }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
