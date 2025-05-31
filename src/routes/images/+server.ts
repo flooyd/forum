@@ -3,13 +3,36 @@ import { imagesTable } from '$lib/server/db/schema.js';
 import { checkAdminAuth } from '$lib/server/auth';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
+import { writeFile, mkdir } from 'fs/promises';
+import { join, dirname } from 'path';
+import { existsSync } from 'fs';
 import sharp from 'sharp';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 const UPLOAD_DIR = 'static/uploads';
+
+// Track if directory has been checked to avoid repeated file system calls
+let directoryChecked = false;
+
+async function ensureUploadDirectory(): Promise<void> {
+    if (directoryChecked) return;
+    
+    if (!existsSync(UPLOAD_DIR)) {
+        try {
+            await mkdir(UPLOAD_DIR, { recursive: true });
+            console.log(`Created upload directory: ${UPLOAD_DIR}`);
+        } catch (error) {
+            console.error('Error creating upload directory:', error);
+            throw new Error('Failed to create upload directory');
+        }
+    }
+    
+    directoryChecked = true;
+}
+
+// Initialize upload directory on module load
+ensureUploadDirectory().catch(console.error);
 
 async function processImage(buffer: Buffer, mimeType: string): Promise<Buffer> {
     // For GIFs, don't process to preserve animation
@@ -86,12 +109,13 @@ export const POST = async ({ request, locals }) => {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
-        }
-
-        // Generate unique filename
+        }        // Generate unique filename
         const fileExtension = file.name.split('.').pop() || 'jpg';
         const storedFilename = `${uuidv4()}.${fileExtension}`;
         const filePath = join(UPLOAD_DIR, storedFilename);
+
+        // Ensure upload directory exists
+        await ensureUploadDirectory();
 
         // Process image
         const buffer = Buffer.from(await file.arrayBuffer());

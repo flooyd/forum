@@ -1,5 +1,15 @@
 import jwt from 'jsonwebtoken';
 import { SECRET } from '$env/static/private';
+import { mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+
+// Ensure upload directory exists on server startup
+const UPLOAD_DIR = 'static/uploads';
+if (!existsSync(UPLOAD_DIR)) {
+    mkdir(UPLOAD_DIR, { recursive: true })
+        .then(() => console.log(`Created upload directory: ${UPLOAD_DIR}`))
+        .catch(error => console.error('Error creating upload directory:', error));
+}
 
 export async function handle({ event, resolve }) {
     // Check if the request has a token in the headers

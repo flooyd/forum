@@ -22,4 +22,8 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# Uploads
+/static/uploads/*
+!/static/uploads/.gitkeep
+
 .vercel
