@@ -3,54 +3,11 @@ import { imagesTable } from '$lib/server/db/schema.js';
 import { checkAdminAuth } from '$lib/server/auth';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import { writeFile, mkdir } from 'fs/promises';
-import { join, dirname, resolve } from 'path';
-import { existsSync } from 'fs';
+import { put, del } from '@vercel/blob';
 import sharp from 'sharp';
-import process from 'process';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-
-// Use environment variable for upload directory or fall back to default
-const UPLOAD_DIR = process.env.UPLOAD_DIR || resolve(process.cwd(), 'static', 'uploads');
-
-// Track if directory has been checked to avoid repeated file system calls
-let directoryChecked = false;
-
-async function ensureUploadDirectory(): Promise<string> {
-    if (directoryChecked) return UPLOAD_DIR;
-    
-    try {
-        if (!existsSync(UPLOAD_DIR)) {
-            await mkdir(UPLOAD_DIR, { recursive: true });
-            console.log(`Created upload directory: ${UPLOAD_DIR}`);
-        }
-        
-        // Test write permissions by creating a temporary file
-        const testFile = join(UPLOAD_DIR, '.write-test');
-        await writeFile(testFile, 'test');
-        
-        // Clean up test file
-        try {
-            const { unlink } = await import('fs/promises');
-            await unlink(testFile);
-        } catch (cleanupError) {
-            console.warn('Failed to clean up test file:', cleanupError);        }
-          directoryChecked = true;
-        console.log(`Upload directory verified: ${UPLOAD_DIR}`);
-        return UPLOAD_DIR;
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('Error setting up upload directory:', error);
-        console.error('Current working directory:', process.cwd());
-        console.error('Attempted upload directory:', UPLOAD_DIR);
-        throw new Error(`Failed to setup upload directory: ${errorMessage}`);
-    }
-}
-
-// Initialize upload directory on module load
-ensureUploadDirectory().catch(console.error);
 
 async function processImage(buffer: Buffer, mimeType: string): Promise<Buffer> {
     // For GIFs, don't process to preserve animation
@@ -89,9 +46,7 @@ export const POST = async ({ request, locals }) => {
                 status: 401,
                 headers: { 'Content-Type': 'application/json' }
             });
-        }
-
-        const formData = await request.formData();
+        }        const formData = await request.formData();
         const file = formData.get('image') as File;
         const alt = formData.get('alt') as string || '';
         const threadId = formData.get('threadId') as string;
@@ -127,27 +82,26 @@ export const POST = async ({ request, locals }) => {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
-        }        // Generate unique filename
+        }
+
+        // Generate unique filename
         const fileExtension = file.name.split('.').pop() || 'jpg';
-        const storedFilename = `${uuidv4()}.${fileExtension}`;
-        
-        // Ensure upload directory exists and get the actual path
-        const actualUploadDir = await ensureUploadDirectory();
-        const filePath = join(actualUploadDir, storedFilename);
+        const storedFilename = `images/${uuidv4()}.${fileExtension}`;
 
         // Process image
         const buffer = Buffer.from(await file.arrayBuffer());
         const processedBuffer = await processImage(buffer, file.type);
 
-        // Save file to disk
-        await writeFile(filePath, processedBuffer);
-
-        // Save metadata to database
+        // Upload to Vercel Blob
+        const blob = await put(storedFilename, processedBuffer, {
+            access: 'public',
+            contentType: file.type
+        });        // Save metadata to database
         const imageRecord = await db
             .insert(imagesTable)
             .values({
                 filename: file.name,
-                storedFilename,
+                storedFilename: blob.url, // Store the Vercel Blob URL
                 mimeType: file.type,
                 size: processedBuffer.length,
                 uploadedBy: Number(locals.user.id),
@@ -156,30 +110,23 @@ export const POST = async ({ request, locals }) => {
                 alt: alt || file.name,
                 createdAt: new Date()
             })
-            .returning();
-
-        return new Response(JSON.stringify({ 
+            .returning();        return new Response(JSON.stringify({ 
             success: true, 
             message: 'Image uploaded successfully',
             image: {
                 id: imageRecord[0].id,
-                url: `/uploads/${storedFilename}`,
+                url: blob.url,
                 alt: imageRecord[0].alt,
                 filename: imageRecord[0].filename
             }
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
-        });    } catch (error) {
+        });
+
+    } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('Error uploading image:', error);
-        console.error('Error details:', {
-            message: errorMessage,
-            uploadDir: UPLOAD_DIR,
-            cwd: process.cwd(),
-            directoryChecked,
-            error: error
-        });
         
         return new Response(JSON.stringify({ 
             success: false, 
@@ -218,9 +165,7 @@ export const GET = async ({ url, locals }) => {
         }
         if (userId) {
             whereClause.uploadedBy = Number(userId);
-        }
-
-        const images = await db
+        }        const images = await db
             .select({
                 id: imagesTable.id,
                 filename: imagesTable.filename,
@@ -234,9 +179,9 @@ export const GET = async ({ url, locals }) => {
             })
             .from(imagesTable)
             .where(whereClause)
-            .orderBy(imagesTable.createdAt);        const formattedImages = images.map((img: any) => ({
+            .orderBy(imagesTable.createdAt);const formattedImages = images.map((img: any) => ({
             ...img,
-            url: `/uploads/${img.storedFilename}`
+            url: img.storedFilename // storedFilename now contains the Vercel Blob URL
         }));
 
         return new Response(JSON.stringify({ 
@@ -375,9 +320,7 @@ export const DELETE = async ({ request, locals }) => {
                 status: 404,
                 headers: { 'Content-Type': 'application/json' }
             });
-        }
-
-        // Check if user owns the image or is admin
+        }        // Check if user owns the image or is admin
         const auth = await checkAdminAuth(locals);
         if (image.uploadedBy !== Number(locals.user.id) && !auth.isAdmin) {
             return new Response(JSON.stringify({ 
@@ -387,6 +330,16 @@ export const DELETE = async ({ request, locals }) => {
                 status: 403,
                 headers: { 'Content-Type': 'application/json' }
             });
+        }
+
+        // Delete from Vercel Blob if it's a blob URL
+        if (image.storedFilename && image.storedFilename.includes('vercel-storage.com')) {
+            try {
+                await del(image.storedFilename);
+            } catch (blobError) {
+                console.warn('Failed to delete from Vercel Blob:', blobError);
+                // Continue with database deletion even if blob deletion fails
+            }
         }
 
         // Soft delete the image

@@ -13,7 +13,7 @@
 	let actionComment: any = {};
 	let ready = false;
 	let showImageUpload = false;
-	
+
 	// Lightbox state
 	let lightboxOpen = false;
 	let lightboxImageSrc = '';
@@ -51,17 +51,14 @@
 				/&lt;blockquote data-author="([^"]+)" data-id="([^"]+)"&gt;([\s\S]*?)&lt;\/blockquote&gt;/gs,
 				(_match, author, id, quote) => {
 					// Fix: Remove extra indentation and line breaks in the template
-					return `<div class="quoted-content"><div class="quote-header">Quoted ${comments.find(c => c.id === Number(id))?.displayName || 'Unknown'} <span class="quote-id">#${id}</span>:</div><div class="quote-body">${quote}</div></div>`;
+					return `<div class="quoted-content"><div class="quote-header">Quoted ${comments.find((c) => c.id === Number(id))?.displayName || 'Unknown'} <span class="quote-id">#${id}</span>:</div><div class="quote-body">${quote}</div></div>`;
 				}
 			);
 		} while (sanitized !== previousSanitized); // Continue until no more changes are made
 		// Process image markdown: ![alt](url)
-		sanitized = sanitized.replace(
-			/!\[([^\]]*)\]\(([^)]+)\)/g,
-			(_match, alt, url) => {
-				return `<img src="${url}" alt="${alt}" class="comment-image clickable-image" loading="lazy" data-lightbox="true" />`;
-			}
-		);
+		sanitized = sanitized.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, alt, url) => {
+			return `<img src="${url}" alt="${alt}" class="comment-image clickable-image" loading="lazy" data-lightbox="true" />`;
+		});
 
 		// Check if the content was just a quote (plus maybe some whitespace)
 		const isJustQuote = /^(\s*)<div class="quoted-content">[\s\S]*<\/div>(\s*)$/.test(sanitized);
@@ -99,10 +96,14 @@
 		//clone comment to avoid mutating the original
 		actionComment = { ...comment };
 		$editCommentModal = true;
-	};	const deleteComment = async (commentId: string) => {
+	};
+
+	const deleteComment = async (commentId: string) => {
 		// Show confirmation dialog
-		const confirmed = confirm('Are you sure you want to delete this comment? This action cannot be undone.');
-		
+		const confirmed = confirm(
+			'Are you sure you want to delete this comment? This action cannot be undone.'
+		);
+
 		if (!confirmed) {
 			return; // User cancelled, don't delete
 		}
@@ -123,20 +124,20 @@
 			console.error('Failed to delete comment');
 		}
 	};
-
-	const handleImageUploaded = (event: CustomEvent) => {
-		console.log('Image uploaded:', event.detail);
+	const handleImageUploaded = (image: any) => {
+		console.log('Image uploaded:', image);
 		// Image upload handled by the component
 	};
-	const handleInsertImage = (event: CustomEvent) => {
-		const { markdown } = event.detail;
+
+	const handleInsertImage = (data: { markdown: string }) => {
+		const { markdown } = data;
 		// Insert the image markdown at the current cursor position
 		if (newComment) {
 			newComment = newComment + '\n' + markdown;
 		} else {
 			newComment = markdown;
 		}
-		
+
 		// Focus the textarea
 		setTimeout(() => {
 			const textarea = document.querySelector('textarea');
@@ -150,7 +151,7 @@
 	const openLightbox = (imageSrc: string, imageAlt: string) => {
 		// Collect all images from the current comment thread
 		const allImages: any[] = [];
-		
+
 		// Get all comment images from the page
 		const commentImages = document.querySelectorAll('.comment-image[data-lightbox="true"]');
 		commentImages.forEach((img: Element, index: number) => {
@@ -161,10 +162,10 @@
 				src: imgElement.src
 			});
 		});
-		
+
 		// Find the index of the clicked image
-		const clickedIndex = allImages.findIndex(img => img.url === imageSrc);
-		
+		const clickedIndex = allImages.findIndex((img) => img.url === imageSrc);
+
 		lightboxImages = allImages;
 		lightboxCurrentIndex = clickedIndex >= 0 ? clickedIndex : 0;
 		lightboxImageSrc = imageSrc;
@@ -228,14 +229,18 @@
 		{#if comments.length > 0}
 			<div class="title">
 				<h2>{threadTitle}</h2>
-				<TagDisplay tags={tags} maxDisplay={3} />
+				<TagDisplay {tags} maxDisplay={3} />
 			</div>
 			<div class="comments">
 				{#each comments as comment}
 					<div class="comment">
-						{@html formatComment(comment.content)}						<div class="commentInfo">
+						{@html formatComment(comment.content)}
+						<div class="commentInfo">
 							<p class="creator">
-								<img src={comment.avatar || '/question-mark.webp'} alt="comment author avatar" />{comment.displayName}
+								<img
+									src={comment.avatar || '/question-mark.webp'}
+									alt="comment author avatar"
+								/>{comment.displayName}
 							</p>
 							<div class="commentInfoDates">
 								<p>Commented on {new Date(comment.createdAt).toLocaleString()}</p>
@@ -256,32 +261,33 @@
 					</div>
 				{/each}
 			</div>
-		{/if}		{#if $user}
+		{/if}
+		{#if $user}
 			<form on:submit|preventDefault={addComment}>
 				<textarea placeholder="Add a comment" bind:value={newComment}></textarea>
-				
+
 				<div class="form-actions">
-					<button 
-						type="button" 
+					<button
+						type="button"
 						class="image-toggle"
-						on:click={() => showImageUpload = !showImageUpload}
+						on:click={() => (showImageUpload = !showImageUpload)}
 					>
 						{showImageUpload ? 'Hide' : 'Add'} Images
 					</button>
 					<button type="submit">Add Comment</button>
 				</div>
-				
 				{#if showImageUpload}
-					<ImageUpload 
+					<ImageUpload
 						threadId={Number(window.location.pathname.split('/')[2])}
-						on:imageUploaded={handleImageUploaded}
-						on:insertImage={handleInsertImage}
+						onImageUploaded={handleImageUploaded}
+						onImageInserted={handleInsertImage}
 						multiple={true}
 						buttonText="Upload Images"
 					/>
 				{/if}
 			</form>
-		{/if}		{#if $editCommentModal}
+		{/if}
+		{#if $editCommentModal}
 			<EditComment comment={actionComment} />
 		{/if}
 	</div>
@@ -397,18 +403,24 @@
 	:global(.quote-body) {
 		padding-left: 8px;
 	}
+
 	:global(.quote-id) {
 		color: #888;
 		font-size: 0.9em;
 		margin-left: 4px;
 	}
+
 	:global(.comment-image) {
-		max-width: 100%;
+		max-width: 300px;
 		max-height: 400px;
+		width: fit-content;
 		border-radius: 4px;
 		margin: 8px 0;
 		cursor: pointer;
-		transition: transform 0.2s ease, box-shadow 0.2s ease;
+		object-fit: contain;
+		transition:
+			transform 0.2s ease,
+			box-shadow 0.2s ease;
 	}
 
 	:global(.comment-image.clickable-image) {

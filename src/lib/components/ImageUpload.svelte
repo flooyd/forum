@@ -1,8 +1,4 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
-    
-    const dispatch = createEventDispatcher();
-    
     export let threadId: number | null = null;
     export let commentId: number | null = null;
     export let multiple = false;
@@ -11,12 +7,14 @@
     export let buttonText = 'Upload Image';
     export let disabled = false;
     
-    let fileInput: HTMLInputElement;
+    // Callback props instead of events
+    export let onImageUploaded: ((image: any) => void) | undefined = undefined;
+    export let onImageInserted: ((data: { filename: string; altText: string; markdown: string; image: any }) => void) | undefined = undefined;
+    export let onImageRemoved: ((data: { imageId: number }) => void) | undefined = undefined;
+      let fileInput: HTMLInputElement;
     let uploading = false;
     let dragOver = false;
-    let uploadedImages: any[] = [];
-    
-    const handleFileSelect = async (files: FileList | null) => {
+    let uploadedImages: any[] = [];    const handleFileSelect = async (files: FileList | null) => {
         if (!files || files.length === 0) return;
         
         const filesToUpload = Array.from(files);
@@ -47,8 +45,7 @@
             uploading = false;
         }
     };
-    
-    const uploadImage = async (file: File) => {
+      const uploadImage = async (file: File) => {
         const formData = new FormData();
         formData.append('image', file);
         formData.append('alt', file.name);
@@ -69,10 +66,9 @@
         });
         
         const result = await response.json();
-        
-        if (result.success) {
+          if (result.success) {
             uploadedImages = [...uploadedImages, result.image];
-            dispatch('imageUploaded', result.image);
+            onImageUploaded?.(result.image);
         } else {
             throw new Error(result.message);
         }
@@ -95,10 +91,9 @@
     const handleDragLeave = (event: DragEvent) => {
         event.preventDefault();
         dragOver = false;
-    };
-      const insertImageIntoTextarea = (image: any) => {
+    };    const insertImageIntoTextarea = (image: any) => {
         const imageMarkdown = `![${image.alt}](${image.url})`;
-        dispatch('imageInserted', { 
+        onImageInserted?.({ 
             filename: image.filename, 
             altText: image.alt,
             markdown: imageMarkdown, 
@@ -117,10 +112,9 @@
                 body: JSON.stringify({ imageId })
             });
             
-            const result = await response.json();
-              if (result.success) {
+            const result = await response.json();            if (result.success) {
                 uploadedImages = uploadedImages.filter(img => img.id !== imageId);
-                dispatch('imageRemoved', { imageId });
+                onImageRemoved?.({ imageId });
             } else {
                 alert('Error removing image: ' + result.message);
             }
@@ -138,6 +132,8 @@
         on:drop={handleDrop}
         on:dragover={handleDragOver}
         on:dragleave={handleDragLeave}
+        role="button"
+        tabindex="0"
     >        <input
             bind:this={fileInput}
             type="file"
@@ -147,8 +143,8 @@
             on:change={(e) => handleFileSelect((e.target as HTMLInputElement)?.files)}
             style="display: none;"
         />
-        
-        <button 
+          <button 
+            type="button"
             class="upload-button"
             {disabled}
             on:click={() => fileInput.click()}
@@ -166,8 +162,7 @@
         
         <p class="file-info">
             Max size: {maxSize}MB • Supported: JPEG, PNG, GIF, WebP
-        </p>
-    </div>
+        </p>    </div>
     
     {#if uploadedImages.length > 0}
         <div class="uploaded-images">
@@ -175,9 +170,9 @@
             <div class="image-grid">
                 {#each uploadedImages as image (image.id)}
                     <div class="image-item">
-                        <img src={image.url} alt={image.alt} />
-                        <div class="image-actions">
+                        <img src={image.url} alt={image.alt} />                        <div class="image-actions">
                             <button 
+                                type="button"
                                 class="insert-button"
                                 on:click={() => insertImageIntoTextarea(image)}
                                 title="Insert into text"
@@ -185,6 +180,7 @@
                                 Insert
                             </button>
                             <button 
+                                type="button"
                                 class="remove-button"
                                 on:click={() => removeUploadedImage(image.id)}
                                 title="Remove image"
@@ -243,8 +239,7 @@
         color: #666;
         font-size: 14px;
     }
-    
-    .file-info {
+      .file-info {
         margin: 0;
         color: #888;
         font-size: 12px;

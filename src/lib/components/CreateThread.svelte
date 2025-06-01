@@ -27,9 +27,7 @@
 				JSON.parse(JSON.stringify(newThread)),
 				...JSON.parse(JSON.stringify($originalThreads))
 			]; // Deep copy
-			console.log($threads);
-
-			// If there's an initial comment, add it to the thread
+			console.log($threads);			// If there's an initial comment, add it to the thread
 			if (initialComment.trim()) {
 				await addInitialComment(newThread.id);
 			}
@@ -39,6 +37,7 @@
 			// Handle error
 		}
 	};
+	
 	const addInitialComment = async (threadId: number) => {
 		try {
 			const response = await fetch(`/comments/${threadId}`, {
@@ -85,19 +84,15 @@
 		uploadedImages = [];
 		showImageUpload = false;
 	};
-
 	// Handle image upload events
-	const handleImageUploaded = (event: CustomEvent) => {
-		uploadedImages = [...uploadedImages, event.detail];
+	const handleImageUploaded = (image: any) => {
+		uploadedImages = [...uploadedImages, image];
 	};
 
-	const handleImageRemoved = (event: CustomEvent) => {
-		uploadedImages = uploadedImages.filter(img => img.id !== event.detail.imageId);
-	};
-
-	const handleImageInserted = (event: CustomEvent) => {
-		const { filename, altText } = event.detail;
-		const imageMarkdown = `![${altText || 'Image'}](/images/${filename})`;
+	const handleImageRemoved = (data: { imageId: number }) => {
+		uploadedImages = uploadedImages.filter(img => img.id !== data.imageId);
+	};	const handleImageInserted = (data: { filename: string; altText: string; markdown: string }) => {
+		const { markdown } = data;
 		
 		// Insert at cursor position or append to end
 		const textarea = document.getElementById('initialComment') as HTMLTextAreaElement;
@@ -105,16 +100,16 @@
 			const cursorPos = textarea.selectionStart;
 			const textBefore = initialComment.substring(0, cursorPos);
 			const textAfter = initialComment.substring(textarea.selectionEnd);
-			initialComment = textBefore + imageMarkdown + '\n' + textAfter;
+			initialComment = textBefore + markdown + '\n' + textAfter;
 			
 			// Update cursor position
 			setTimeout(() => {
-				const newPos = cursorPos + imageMarkdown.length + 1;
+				const newPos = cursorPos + markdown.length + 1;
 				textarea.setSelectionRange(newPos, newPos);
 				textarea.focus();
 			}, 0);
 		} else {
-			initialComment += (initialComment ? '\n' : '') + imageMarkdown;
+			initialComment += (initialComment ? '\n' : '') + markdown;
 		}
 	};
 </script>
@@ -147,14 +142,13 @@
 				{/if}
 			</div>
 
-			{#if showImageUpload && initialComment.trim()}
-				<div class="image-upload-section">
+			{#if showImageUpload && initialComment.trim()}				<div class="image-upload-section">
 					<ImageUpload
 						threadId={null}
 						commentId={null}
-						on:imageUploaded={handleImageUploaded}
-						on:imageRemoved={handleImageRemoved}
-						on:imageInserted={handleImageInserted}
+						onImageUploaded={handleImageUploaded}
+						onImageRemoved={handleImageRemoved}
+						onImageInserted={handleImageInserted}
 					/>
 				</div>
 			{/if}
@@ -169,6 +163,7 @@
 	input,
 	textarea {
 		max-width: calc(100vw - 40px);
+		min-width: 100%;
 	}
 
 	textarea {

@@ -54,7 +54,7 @@ export const threadTagsTable = pgTable('thread_tags', {
 export const imagesTable = pgTable('images', {
     id: serial('id').primaryKey(),
     filename: text('filename').notNull(), // Original filename
-    storedFilename: text('stored_filename').notNull(), // UUID filename on disk
+    storedFilename: text('stored_filename').notNull(), // UUID filename or Vercel Blob URL
     mimeType: text('mime_type').notNull(),
     size: bigint('size', { mode: 'number' }).notNull(), // File size in bytes
     uploadedBy: integer('uploaded_by').notNull().references(() => usersTable.id),
