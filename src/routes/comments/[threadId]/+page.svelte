@@ -57,7 +57,12 @@
 		} while (sanitized !== previousSanitized); // Continue until no more changes are made
 		// Process image markdown: ![alt](url)
 		sanitized = sanitized.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, alt, url) => {
-			return `<img src="${url}" alt="${alt}" class="comment-image clickable-image" loading="lazy" data-lightbox="true" />`;
+			const altText = alt || 'User uploaded image';
+			// Added onerror handler and fallback div
+			return `<img src="${url}" alt="${altText}" class="comment-image clickable-image" loading="lazy" data-lightbox="true" onerror="this.style.display=\\'none\\'; this.nextElementSibling.style.display=\\'block\\';" />
+            <div class="image-load-fallback" style="display:none;">
+                Failed to load: ${altText}
+            </div>`;
 		});
 
 		// Check if the content was just a quote (plus maybe some whitespace)
@@ -450,5 +455,29 @@
 		background: rgba(0, 0, 0, 0.9);
 		padding: 20px;
 		border-radius: 8px;
+	}
+
+	:global(.image-load-fallback) {
+		display: none; /* Hidden by default */
+		padding: 8px;
+		border: 1px dashed #ccc;
+		color: #888;
+		text-align: center;
+		margin: 8px 0;
+		max-width: 300px; /* Consistent with image styling */
+		background-color: #f9f9f9;
+		border-radius: 4px;
+	}
+
+	@media (max-width: 768px) {
+		:global(.comment-image) {
+			max-width: 100%; /* Use full available width within the comment padding */
+			max-height: 300px; /* Adjust height for mobile */
+		}
+
+		:global(.image-load-fallback) {
+			font-size: 0.9em; /* Slightly smaller font on mobile */
+			padding: 8px;
+		}
 	}
 </style>
