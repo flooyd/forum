@@ -63,19 +63,25 @@ export const GET = async ({ locals, params, request }) => {
         const msg = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
             max_tokens: 1000,
-            temperature: 1,
-            system: "Add a comment to the thread. Prioritize thread comments over user comments.",
+            temperature: 0.7,
+            system: `You are writing a comment as if you are the user. Analyze their previous comments to understand their writing style, tone, and perspective. Then write a thoughtful comment that contributes meaningfully to the thread discussion while maintaining consistency with the user's voice. Keep the comment natural, engaging, and relevant to the thread topic.`,
             messages: [
-                {
-                    role: "user",
-                    content: `
-                    ---THREAD TITLE--- 
-                    ${thread.title}
-                    ---THREAD COMMENTS--- 
-                    ${threadComments.map((comment: { content: any; }) => comment.content).join('\n')}
-                    ---USER COMMENTS--- 
-                    ${userComments.map((comment: { content: any; }) => comment.content).join('\n')}`
-                }
+            {
+                role: "user",
+                content: `
+                Write a comment for this thread as if you are me. Base your writing style on my previous comments.
+                
+                THREAD TITLE: 
+                ${thread.title}
+                
+                THREAD DISCUSSION:
+                ${threadComments.map((comment: { content: any; }, index: number) => `Comment ${index + 1}: ${comment.content}`).join('\n\n')}
+                
+                MY PREVIOUS COMMENTS (to learn my writing style):
+                ${userComments.map((comment: { content: any; }, index: number) => `${index + 1}. ${comment.content}`).join('\n\n')}
+                
+                Write a comment that adds value to the discussion while sounding like me.`
+            }
             ]
         });
         console.log(msg);

@@ -228,6 +228,11 @@ export const DELETE = async ({ request, locals, params }) => {
             headers: { 'Content-Type': 'application/json' }
         });
     } else {
+        //update thread updatedAt
+        await db.update(threadsTable).set({
+            updatedAt: new Date()
+        }).where(eq(threadsTable.id, comment.threadId));
+        
         return new Response(JSON.stringify({ success: true, deletedComment }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
