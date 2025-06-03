@@ -19,6 +19,7 @@ declare global {
 		interface PrivateEnv {
 			SECRET: string;
 			DB_URI: string;
+			CLAUDE: string;
 		}
 		interface PublicEnv {}
 	}

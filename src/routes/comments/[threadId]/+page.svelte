@@ -13,6 +13,7 @@
 	let actionComment: any = {};
 	let ready = false;
 	let showImageUpload = false;
+	let aiComment: null = null;
 
 	// Lightbox state
 	let lightboxOpen = false;
@@ -194,6 +195,7 @@
 		$currentPage = 'comments';
 		await fetchComments();
 		await fetchTags();
+		await fetchUserComments();
 		ready = true;
 	});
 
@@ -211,6 +213,25 @@
 		console.log(data);
 		comments = data.comments;
 		threadTitle = data.threadTitle;
+	};
+
+	const fetchUserComments = async () => {
+		const threadId = window.location.pathname.split('/')[2];
+		const response = await fetch(`/comments/ai/${threadId}`, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${localStorage.getItem('token')}`
+			}
+		});
+
+		if (!response.ok) {
+			console.error('Failed to fetch user comments');
+			return;
+		}
+
+		const data = await response.json();
+		aiComment = data.aiComment || null;
 	};
 
 	const fetchTags = async () => {
@@ -268,6 +289,9 @@
 			</div>
 		{/if}
 		{#if $user}
+			<div class="aiComment">
+				AI-COMMENT: {aiComment}
+			</div>
 			<form on:submit|preventDefault={addComment}>
 				<textarea placeholder="Add a comment" bind:value={newComment}></textarea>
 
@@ -390,6 +414,10 @@
 		width: 100%;
 		height: 100px;
 		resize: none;
+	}
+
+	.aiComment {
+		margin-top: 10px;
 	}
 
 	:global(.quoted-content) {

@@ -3,7 +3,6 @@ import { commentsTable, usersTable, threadsTable } from '$lib/server/db/schema.j
 import { asc, eq } from 'drizzle-orm';
 
 //GET function that uses locals and query param to get the comments associated with the thread
-
 export const GET = async ({ locals, params }) => {
     // check if the user is authenticated
     if (!locals.user) {
