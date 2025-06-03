@@ -6,6 +6,7 @@
 	import ImageUpload from '../../../lib/components/ImageUpload.svelte';
 	import ImageLightbox from '../../../lib/components/ImageLightbox.svelte';
 	import { fade } from 'svelte/transition';
+
 	let comments: any[] = [];
 	let tags: any[] = [];
 	let threadTitle: string = '';
@@ -14,6 +15,7 @@
 	let ready = false;
 	let showImageUpload = false;
 	let aiComment: null = null;
+	let aiCommentLoading = false;
 
 	// Lightbox state
 	let lightboxOpen = false;
@@ -195,7 +197,6 @@
 		$currentPage = 'comments';
 		await fetchComments();
 		await fetchTags();
-		await fetchUserComments();
 		ready = true;
 	});
 
@@ -215,7 +216,8 @@
 		threadTitle = data.threadTitle;
 	};
 
-	const fetchUserComments = async () => {
+	const fetchAiComment = async () => {
+		aiCommentLoading = true;
 		const threadId = window.location.pathname.split('/')[2];
 		const response = await fetch(`/comments/ai/${threadId}`, {
 			method: 'GET',
@@ -232,6 +234,7 @@
 
 		const data = await response.json();
 		aiComment = data.aiComment || null;
+		aiCommentLoading = false;
 	};
 
 	const fetchTags = async () => {
@@ -304,6 +307,13 @@
 						{showImageUpload ? 'Hide' : 'Add'} Images
 					</button>
 					<button type="submit">Add Comment</button>
+					<button type="button" disabled={aiCommentLoading} on:click={fetchAiComment}>
+						{#if aiCommentLoading}
+							<span>Loading AI Comment...</span>
+						{:else}
+							Generate AI Comment
+						{/if}
+					</button>
 				</div>
 				{#if showImageUpload}
 					<ImageUpload

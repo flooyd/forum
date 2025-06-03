@@ -63,17 +63,17 @@ export const GET = async ({ locals, params, request }) => {
         const msg = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
             max_tokens: 1000,
-            temperature: .05,
-            system: "Impersonate the user",
+            temperature: .5,
+            system: "Impersonate the user and add a comment to the thread. Prioritize thread comments over user comments.",
             messages: [
                 {
                     role: "user",
                     content: `
-                    Thread Title: 
+                    ---THREAD TITLE--- 
                     ${thread.title}
-                    Thread Comments: 
+                    ---THREAD COMMENTS--- 
                     ${threadComments.map((comment: { content: any; }) => comment.content).join('\n')}
-                    User Comments: 
+                    ---USER COMMENTS--- 
                     ${userComments.map((comment: { content: any; }) => comment.content).join('\n')}`
                 }
             ]
