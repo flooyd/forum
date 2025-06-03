@@ -56,7 +56,7 @@ export const GET = async ({ locals, params, request }) => {
         }).from(commentsTable)
             .innerJoin(usersTable, eq(commentsTable.userId, usersTable.id))
             .where(eq(commentsTable.userId, Number(locals.user.id)))
-            .limit(10)
+            .limit(20)
             .offset(0)
             .orderBy(desc(commentsTable.createdAt));
 
@@ -64,14 +64,17 @@ export const GET = async ({ locals, params, request }) => {
             model: "claude-sonnet-4-20250514",
             max_tokens: 1000,
             temperature: .05,
-            system: "Impersonate the user. Add a comment to the thread. Ignore markup and html when impersonating.",
+            system: "Impersonate the user. Add a comment to the thread. Ignore markup and html when impersonating. Prioritize the current thread.",
             messages: [
                 {
                     role: "user",
-                    content: `Thread Title: ${thread.title}
-    Thread Comments: ${threadComments.map((comment: { content: any; }) => comment.content).join('\n')}
-    User Comments: ${userComments.map((comment: { content: any; }) => comment.content).join('\n')}
-    User Display Name: ${locals.user.displayName}`
+                    content: `
+                    Thread Title: 
+                    ${thread.title}
+                    Thread Comments: 
+                    ${threadComments.map((comment: { content: any; }) => comment.content).join('\n')}
+                    User Comments: 
+                    ${userComments.map((comment: { content: any; }) => comment.content).join('\n')}`
                 }
             ]
         });
