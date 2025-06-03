@@ -56,7 +56,7 @@ export const GET = async ({ locals, params, request }) => {
         }).from(commentsTable)
             .innerJoin(usersTable, eq(commentsTable.userId, usersTable.id))
             .where(eq(commentsTable.userId, Number(locals.user.id)))
-            .limit(20)
+            .limit(10)
             .offset(0)
             .orderBy(desc(commentsTable.createdAt));
 
@@ -64,7 +64,7 @@ export const GET = async ({ locals, params, request }) => {
             model: "claude-sonnet-4-20250514",
             max_tokens: 1000,
             temperature: .05,
-            system: "Impersonate the user. Add a comment to the thread. Ignore markup and html when impersonating. Prioritize the current thread.",
+            system: "Impersonate the user",
             messages: [
                 {
                     role: "user",
