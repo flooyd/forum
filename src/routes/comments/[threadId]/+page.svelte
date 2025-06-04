@@ -67,6 +67,18 @@
                 Failed to load: ${altText}
             </div>`;
 		});
+		//streamable embed
+		sanitized = sanitized.replace(
+			/https?:\/\/(?:www\.)?streamable\.com\/([a-zA-Z0-9]+)/g,
+			(_match, id) => {
+				return `<iframe src="https://streamable.com/e/${id}" frameborder="0" allowfullscreen class="streamable-embed"></iframe>`;
+			});
+		// YouTube embed
+		sanitized = sanitized.replace(
+			/https?:\/\/(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/g,
+			(_match, id) => {
+				return `<iframe src="https://www.youtube.com/embed/${id}" frameborder="0" allowfullscreen class="youtube-embed"></iframe>`;
+			});
 
 		// Check if the content was just a quote (plus maybe some whitespace)
 		const isJustQuote = /^(\s*)<div class="quoted-content">[\s\S]*<\/div>(\s*)$/.test(sanitized);
@@ -428,6 +440,10 @@
 
 	.aiComment {
 		margin-top: 10px;
+	}
+	
+	:global(iframe) {
+		width: 300px;
 	}
 
 	:global(.quoted-content) {
