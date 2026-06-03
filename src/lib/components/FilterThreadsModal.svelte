@@ -1,148 +1,78 @@
 <script lang="ts">
 	import { filterThreadsModal, token, threads, originalThreads, activeFilters } from '$lib/stores';
 	import { onMount } from 'svelte';
+	import Tag from './Tag.svelte';
+	import Icon from './Icon.svelte';
 
 	let allTags: any[] = [];
-	let filteredTags: any = [];
+	let selected: number[] = [...$activeFilters];
 
-	const closeModal = () => {
-		$filterThreadsModal = false;
-	};
+	const closeModal = () => ($filterThreadsModal = false);
+
+	const toggle = (id: number) =>
+		(selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+
 	const filterThreads = () => {
-		const selectedTags = Array.from(
-			document.querySelectorAll('input[type="checkbox"]:checked')
-		).map((checkbox) => {
-			const value = (checkbox as HTMLInputElement).value;
-			const numValue = Number(value);
-			console.log('Checkbox value:', value, 'as number:', numValue);
-			return numValue;
-		});
-
-		console.log('Selected tag IDs:', selectedTags);
-		console.log('Original threads sample:', $originalThreads[0]);
-		console.log('Sample thread tags:', $originalThreads[0]?.tags);
-		console.log('All available tags:', allTags);
-
-		$activeFilters = selectedTags;
-		if (selectedTags.length > 0) {
-			// Filter from original threads, not current threads
-			const filteredResults = $originalThreads.filter((thread) => {
-				if (!thread.tags || thread.tags.length === 0) {
-					return false;
-				}
-
-				const hasMatchingTag = thread.tags.some((tag: any) => {
-					// Ensure both values are numbers for comparison
-					const tagId = Number(tag.id);
-					const isMatch = selectedTags.includes(tagId);
-					return isMatch;
-				});
-				return hasMatchingTag;
-			});
-			// Create deep copy to avoid reference issues
+		$activeFilters = selected;
+		if (selected.length > 0) {
+			const filteredResults = $originalThreads.filter((thread) =>
+				(thread.tags || []).some((tag: any) => selected.includes(Number(tag.id)))
+			);
 			$threads = JSON.parse(JSON.stringify(filteredResults));
-			console.log('Filtered', filteredResults.length, 'threads', $threads);
 		} else {
-			// If no filters, show all original threads (deep copy)
 			$threads = JSON.parse(JSON.stringify($originalThreads));
 		}
-
 		closeModal();
 	};
 
 	const clearFilters = () => {
-		// Uncheck all checkboxes
-		const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-		checkboxes.forEach((checkbox) => {
-			(checkbox as HTMLInputElement).checked = false;
-		});
-		// Reset stores
+		selected = [];
 		$activeFilters = [];
-		$threads = JSON.parse(JSON.stringify($originalThreads)); // Deep copy
-
+		$threads = JSON.parse(JSON.stringify($originalThreads));
 		closeModal();
 	};
 
 	onMount(() => {
-		// Load all tags from the server
 		fetch('/tags', {
 			method: 'GET',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${$token}`
-			}
+			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${$token}` }
 		})
-			.then((response) => response.json())
-			.then((data) => {
-				allTags = data;
-				filteredTags = allTags; // Initially show all tags
-				console.log('Loaded tags:', allTags);
-
-				// Pre-check active filters
-				setTimeout(() => {
-					$activeFilters.forEach((tagId) => {
-						const checkbox = document.getElementById(tagId.toString()) as HTMLInputElement;
-						if (checkbox) {
-							checkbox.checked = true;
-						}
-					});
-				}, 0);
-			})
-			.catch((error) => console.error('Error loading tags:', error));
+			.then((r) => r.json())
+			.then((data) => (allTags = data))
+			.catch((e) => console.error('Error loading tags:', e));
 	});
+
+	const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeModal();
 </script>
 
-<div class="modalBackground">
-	<div class="modal">
-		<h2>Filter Threads</h2>
-		<form on:submit|preventDefault={filterThreads}>
-			<label for="tagFilter">Filter by Tag:</label>
-			<div class="tags">
-				{#each filteredTags as tag}
-					<div class="tagCheckbox">
-						<input type="checkbox" id={tag.id} value={tag.id} />
-						<label for={tag.id}>{tag.name}</label>
-					</div>
+<svelte:window on:keydown={onKey} />
+
+<div class="scrim" on:mousedown={(e) => e.target === e.currentTarget && closeModal()}>
+	<div class="modal modal--md" role="dialog" aria-modal="true">
+		<div class="modal__head">
+			<div>
+				<h2 class="modal__title">Filter threads</h2>
+				<p class="modal__sub">Show only threads with these tags.</p>
+			</div>
+			<button class="modal__close" on:click={closeModal} type="button"><Icon name="x" size={18} stroke={2.1} /></button>
+		</div>
+
+		<div class="modal__body">
+			<div class="tag-pick tag-pick--lg">
+				{#each allTags as tag}
+					<Tag {tag} active={selected.includes(tag.id)} interactive onClick={() => toggle(tag.id)} />
 				{/each}
+				{#if allTags.length === 0}<span class="muted">No tags yet.</span>{/if}
 			</div>
-			<div class="buttons">
-				<button type="submit">Apply Filters</button>
-				<button type="button" on:click={clearFilters}>Clear Filters</button>
-				<button type="button" on:click={closeModal}>Cancel</button>
-			</div>
-		</form>
+		</div>
+
+		<div class="modal__foot">
+			<button type="button" class="btn btn--ghost" on:click={clearFilters}>Clear all</button>
+			<span class="toolbar-spacer"></span>
+			<button type="button" class="btn btn--ghost" on:click={closeModal}>Cancel</button>
+			<button type="button" class="btn btn--primary" on:click={filterThreads}>
+				<Icon name="filter" size={16} stroke={2.1} /><span>Apply{selected.length ? ` (${selected.length})` : ''}</span>
+			</button>
+		</div>
 	</div>
 </div>
-
-<style>
-	.tags {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		margin-top: 10px;
-	}
-	.tagCheckbox {
-		display: flex;
-		align-items: center;
-		justify-content: flex-start;
-		border: 2px solid white;
-		border-radius: 4px;
-		padding: 5px;
-		gap: 5px;
-	}
-
-	.tagCheckbox label {
-		margin: 0px;
-	}
-
-	input[type='checkbox'] {
-		width: fit-content;
-	}
-
-	.buttons {
-		margin-top: 10px;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-	}
-</style>

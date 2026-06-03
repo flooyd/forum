@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db';
-import { commentsTable, usersTable, threadsTable } from '$lib/server/db/schema.js';
+import { commentsTable, usersTable, threadsTable, imagesTable } from '$lib/server/db/schema.js';
 import { asc, eq } from 'drizzle-orm';
+import { deleteImages } from '$lib/server/images';
 
 //GET function that uses locals and query param to get the comments associated with the thread
 export const GET = async ({ locals, params }) => {
@@ -219,8 +220,20 @@ export const DELETE = async ({ request, locals, params }) => {
         });
     }
 
+    const id = Number(commentId);
+
+    // Delete images attached to this comment (blobs + rows)
+    const images = await db
+        .select({ id: imagesTable.id, storedFilename: imagesTable.storedFilename })
+        .from(imagesTable)
+        .where(eq(imagesTable.commentId, id));
+    await deleteImages(images);
+
+    // Detach replies that quote this comment so deletion doesn't hit the FK
+    await db.update(commentsTable).set({ quotedId: null }).where(eq(commentsTable.quotedId, id));
+
     //delete the comment
-    const deletedComment = await db.delete(commentsTable).where(eq(commentsTable.id, Number(commentId))).returning();
+    const deletedComment = await db.delete(commentsTable).where(eq(commentsTable.id, id)).returning();
 
     if (!deletedComment) {
         return new Response(JSON.stringify({ success: false, message: 'Error deleting comment' }), {

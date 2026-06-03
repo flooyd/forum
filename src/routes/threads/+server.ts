@@ -1,7 +1,8 @@
 //import db
 import { db } from '$lib/server/db';
-import { usersTable, threadsTable, commentsTable, tagsTable, threadTagsTable } from '$lib/server/db/schema.js';
-import { eq, desc, sql } from 'drizzle-orm';
+import { usersTable, threadsTable, commentsTable, tagsTable, threadTagsTable, imagesTable } from '$lib/server/db/schema.js';
+import { eq, desc, sql, or, inArray } from 'drizzle-orm';
+import { deleteImages } from '$lib/server/images';
 
 export const POST = async ({ request, locals }) => {
     // Check if the user is authenticated
@@ -139,14 +140,41 @@ export const DELETE = async ({ request, locals }) => {
             });
         }
 
+        const id = Number(threadId);
+
+        // Gather the thread's comments so we can clean up everything that hangs off them
+        const threadComments = await db
+            .select({ id: commentsTable.id })
+            .from(commentsTable)
+            .where(eq(commentsTable.threadId, id));
+        const commentIds = threadComments.map((comment: { id: number }) => comment.id);
+
+        // Delete images attached to the thread or to any of its comments (blobs + rows)
+        const imageConditions = [eq(imagesTable.threadId, id)];
+        if (commentIds.length) {
+            imageConditions.push(inArray(imagesTable.commentId, commentIds));
+        }
+        const images = await db
+            .select({ id: imagesTable.id, storedFilename: imagesTable.storedFilename })
+            .from(imagesTable)
+            .where(or(...imageConditions));
+        await deleteImages(images);
+
+        // Detach quotes pointing at any of these comments so deletion doesn't hit the FK
+        if (commentIds.length) {
+            await db.update(commentsTable)
+                .set({ quotedId: null })
+                .where(inArray(commentsTable.quotedId, commentIds));
+        }
+
         // Delete associated thread tags first (foreign key constraint)
-        await db.delete(threadTagsTable).where(eq(threadTagsTable.threadId, Number(threadId)));
+        await db.delete(threadTagsTable).where(eq(threadTagsTable.threadId, id));
 
         // Delete associated comments
-        await db.delete(commentsTable).where(eq(commentsTable.threadId, Number(threadId)));
+        await db.delete(commentsTable).where(eq(commentsTable.threadId, id));
 
         // Delete the thread
-        await db.delete(threadsTable).where(eq(threadsTable.id, Number(threadId)));
+        await db.delete(threadsTable).where(eq(threadsTable.id, id));
 
         return new Response(JSON.stringify({ success: true, message: 'Thread deleted successfully' }), {
             status: 200,

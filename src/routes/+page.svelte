@@ -5,9 +5,13 @@
 	import CreateThread from '$lib/components/CreateThread.svelte';
 	import FilterThreadsModal from '$lib/components/FilterThreadsModal.svelte';
 	import TagManager from '$lib/components/TagManager.svelte';
+	import TagDisplay from '$lib/components/TagDisplay.svelte';
+	import Icon from '$lib/components/Icon.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
+	import Tag from '$lib/components/Tag.svelte';
+	import { rel } from '$lib/util';
 	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
-	import TagDisplay from '$lib/components/TagDisplay.svelte';
 
 	let ready = false;
 	let tagsChanged = false;
@@ -17,191 +21,179 @@
 		await getThreads();
 		ready = true;
 	});
+
 	const getThreads = async () => {
 		if (!$user) return;
 		const response = await fetch('/threads', {
 			method: 'GET',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${$token}`
-			}
+			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${$token}` }
 		});
 		if (response.ok) {
 			const data = await response.json();
 			$threads = data.threads;
-			$originalThreads = JSON.parse(JSON.stringify(data.threads)); // Deep copy to avoid reference issues
-			console.log($threads);
+			$originalThreads = JSON.parse(JSON.stringify(data.threads));
 		} else {
 			console.error('Failed to fetch threads');
 		}
 	};
+
 	const handleClickThread = (thread: { id: any }) => {
 		goto(`/comments/${thread.id}`);
 	};
 
 	const deleteThread = async (threadId: string) => {
-		// Show confirmation dialog
 		const confirmed = confirm(
 			'Are you sure you want to delete this thread? This action cannot be undone and will delete all comments in the thread.'
 		);
-
-		if (!confirmed) {
-			return; // User cancelled, don't delete
-		}
+		if (!confirmed) return;
 
 		const response = await fetch('/threads', {
 			method: 'DELETE',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${$token}`
-			},
+			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${$token}` },
 			body: JSON.stringify({ threadId })
 		});
 		if (response.ok) {
-			// Remove the thread from both current and original thread stores
 			$threads = $threads.filter((thread) => thread.id !== threadId);
 			$originalThreads = JSON.parse(
 				JSON.stringify($originalThreads.filter((thread) => thread.id !== threadId))
 			);
 		} else {
-			console.error('Failed to delete thread');
 			alert('Failed to delete thread. Please try again.');
 		}
 	};
 
-	$: console.log('threads');
-	$: console.log($threads);
+	const clearFilters = () => {
+		$activeFilters = [];
+		$threads = JSON.parse(JSON.stringify($originalThreads));
+	};
 </script>
 
 {#if $user && ready}
-	<div transition:fade>
-		<div class="toolbarContainer">
-			<div class="toolbar">
-				<button on:click={() => ($createThreadModal = true)}>Create Thread</button>
-				<button
-					on:click={() => ($filterThreadsModal = true)}
-					class:active={$activeFilters.length > 0}
-				>
-					Filter {$activeFilters.length > 0 ? `(${$activeFilters.length})` : ''}
+	<div class="board" transition:fade>
+		<div class="board__toolbar">
+			<button class="btn btn--primary" on:click={() => ($createThreadModal = true)} type="button">
+				<Icon name="plus" size={16} stroke={2.1} /><span>Create Thread</span>
+			</button>
+			<button
+				class="ghost-pill"
+				class:ghost-pill--clear={$activeFilters.length > 0}
+				on:click={() => ($filterThreadsModal = true)}
+				type="button"
+			>
+				<Icon name="filter" size={15} stroke={2} /> Filter{$activeFilters.length > 0 ? ` (${$activeFilters.length})` : ''}
+			</button>
+			{#if $activeFilters.length > 0}
+				<button class="ghost-pill ghost-pill--clear" on:click={clearFilters} type="button">
+					<Icon name="x" size={14} stroke={2.2} /> Clear Filters
 				</button>
-				{#if $activeFilters.length > 0}
-					<button
-						on:click={() => {
-							$activeFilters = [];
-							$threads = JSON.parse(JSON.stringify($originalThreads)); // Deep copy
-						}}
-						class="clear-filters"
-					>
-						Clear Filters
-					</button>
-				{/if}
-			</div>
+			{/if}
 		</div>
-		{#if $createThreadModal}
-			<CreateThread />
-		{/if}
-		{#if $filterThreadsModal}
-			<FilterThreadsModal />
-		{/if}
-		<div class="threads">
-			{#each $threads as thread, index (thread.id)}
-				<div class="thread-container">
-					<a
-						class="thread"
-						on:click={() => handleClickThread(thread)}
-						href={`/comments/${thread.id}`}
-					>
-						<h2>{thread.title}</h2>
-						<div class="info">
-							<p class="creator">
-								<img src={thread.avatar || '/question-mark.webp'} alt="thread creator avatar" />
-								{thread.displayName}
-							</p>
-							<p>Replies: {thread.commentCount}</p>
-						</div>
-						<p>Created at: {new Date(thread.createdAt).toLocaleString()}</p>
-						<p>Updated at: {new Date(thread.updatedAt).toLocaleString()}</p>
-					</a>
-					{#if $user && thread.userId === $user.id}
-						<div class="tag-manager-container">
-							<TagManager
-								threadId={thread.id}
-								existingTags={thread.tags || []}
-								onTagsChanged={async () => {
-									tagsChanged = true;
-									// Refresh thread data to get updated tags
-									await getThreads();
-								}}
-								{tagsChanged}
-							/>
-							<button
-								class="delete-thread-btn"
-								on:click={() => deleteThread(thread.id)}
-								title="Delete thread"
-							>
-								Delete Thread 🗑️
-							</button>
-						</div>
-					{:else}
-						<div class="tag-manager-container">
-							<TagDisplay tags={thread.tags || []} maxDisplay={3} />
-						</div>
-					{/if}
+
+		{#if $createThreadModal}<CreateThread />{/if}
+		{#if $filterThreadsModal}<FilterThreadsModal />{/if}
+
+		{#if $threads.length === 0}
+			<div class="empty">
+				<div class="empty__art"><Icon name="chat" size={30} stroke={1.6} /></div>
+				<div class="empty__title">No threads yet</div>
+				<div class="empty__sub">
+					{$activeFilters.length ? 'No threads match the selected tags.' : 'Start the first discussion.'}
 				</div>
-			{/each}
-		</div>
+				<button class="btn btn--primary" on:click={() => ($createThreadModal = true)} type="button">
+					<Icon name="plus" size={16} stroke={2.1} /><span>Create Thread</span>
+				</button>
+			</div>
+		{:else}
+			<div class="rows">
+				{#each $threads as thread, i (thread.id)}
+					<article class="row" style="animation-delay:{Math.min(i, 12) * 45}ms">
+						<div class="row__accent"></div>
+						<a
+							class="row__main"
+							href={`/comments/${thread.id}`}
+							on:click|preventDefault={() => handleClickThread(thread)}
+						>
+							{#if thread.tags?.length}
+								<div class="row__top"><div class="row__tags">{#each thread.tags as t}<Tag tag={t} />{/each}</div></div>
+							{/if}
+							<h3 class="row__title">{thread.title}</h3>
+							<div class="row__meta">
+								<span class="byline">
+									<Avatar user={{ displayName: thread.displayName, avatar: thread.avatar, id: thread.userId }} size={22} />
+									<span class="byline__name">{thread.displayName}</span>
+								</span>
+								<span class="dot-sep">·</span>
+								<span class="muted-mono">Created {rel(thread.createdAt)}</span>
+								<span class="dot-sep">·</span>
+								<span class="muted-mono">Updated {rel(thread.updatedAt)}</span>
+							</div>
+						</a>
+						<div class="row__stats">
+							<div class="bigstat">
+								<span class="bigstat__n">{thread.commentCount ?? 0}</span>
+								<span class="bigstat__l">replies</span>
+							</div>
+						</div>
+						<div class="row__footer">
+							{#if $user && thread.userId === $user.id}
+								<TagManager
+									threadId={thread.id}
+									existingTags={thread.tags || []}
+									onTagsChanged={async () => { tagsChanged = true; await getThreads(); }}
+									{tagsChanged}
+								/>
+								<button class="cact cact--danger" on:click={() => deleteThread(thread.id)} type="button">
+									<Icon name="trash" size={15} stroke={2} /> Delete
+								</button>
+							{:else}
+								<TagDisplay tags={thread.tags || []} maxDisplay={4} />
+							{/if}
+						</div>
+					</article>
+				{/each}
+			</div>
+		{/if}
 	</div>
 {/if}
 
 <style>
-	.toolbarContainer {
-		position: sticky;
-		top: 61.5px;
-		padding: 10px 0px;
-		background: black;
+	.board {
+		max-width: 860px;
+		margin: 0 auto;
+		padding: 26px 24px 80px;
 	}
-	.toolbar {
-		background: black;
-	}
-	.threads {
+	.board__toolbar {
 		display: flex;
-		flex-direction: column;
+		align-items: center;
 		gap: 10px;
-		margin-bottom: 10px;
+		margin-bottom: 18px;
+		flex-wrap: wrap;
 	}
-	.thread-container {
-		border: 2px solid white;
-		border-radius: 4px;
-		background: black;
+	.row {
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas: 'main stats' 'footer footer';
 	}
-	.thread {
-		border: none;
-		border-radius: 4px;
-		padding: 8px;
-		background: black;
-		color: white;
+	.row__main {
+		grid-area: main;
 		display: block;
-		width: 100%;
-		text-align: left;
+		color: inherit;
+		text-decoration: none;
 	}
-	.thread:hover {
-		background: #333;
+	.row__main:hover {
+		text-decoration: none;
 	}
-	.tag-manager-container {
+	.row__stats {
+		grid-area: stats;
+	}
+	.row__footer {
+		grid-area: footer;
 		display: flex;
-		justify-content: space-between;
 		align-items: center;
-		padding: 8px;
-		border-top: 1px solid #333;
-	}
-	.info {
-		display: flex;
 		justify-content: space-between;
-		align-items: center;
-	}
-
-	.toolbar button.active {
-		background: yellow;
-		border-color: white;
+		gap: 10px;
+		margin-top: 14px;
+		padding-top: 14px;
+		border-top: 1px solid var(--border);
+		flex-wrap: wrap;
 	}
 </style>

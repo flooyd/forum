@@ -1,218 +1,116 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	
+	import Icon from './Icon.svelte';
+
 	export let isOpen = false;
 	export let imageSrc = '';
 	export let imageAlt = '';
 	export let images: any[] = [];
 	export let currentIndex = 0;
-	
+
 	const dispatch = createEventDispatcher();
-	
-	const close = () => {
-		dispatch('close');
+
+	const close = () => dispatch('close');
+
+	const show = (i: number) => {
+		if (!images.length) return;
+		currentIndex = (i + images.length) % images.length;
+		imageSrc = images[currentIndex].url || images[currentIndex].src;
+		imageAlt = images[currentIndex].alt || '';
 	};
-	
-	const nextImage = () => {
-		if (images.length > 1) {
-			currentIndex = (currentIndex + 1) % images.length;
-			imageSrc = images[currentIndex].url || images[currentIndex].src;
-			imageAlt = images[currentIndex].alt || '';
-		}
-	};
-	
-	const prevImage = () => {
-		if (images.length > 1) {
-			currentIndex = (currentIndex - 1 + images.length) % images.length;
-			imageSrc = images[currentIndex].url || images[currentIndex].src;
-			imageAlt = images[currentIndex].alt || '';
-		}
-	};
-	
-	const handleKeydown = (event: KeyboardEvent) => {
+	const next = () => show(currentIndex + 1);
+	const prev = () => show(currentIndex - 1);
+
+	const onKey = (e: KeyboardEvent) => {
 		if (!isOpen) return;
-		
-		switch (event.key) {
-			case 'Escape':
-				close();
-				break;
-			case 'ArrowLeft':
-				prevImage();
-				break;
-			case 'ArrowRight':
-				nextImage();
-				break;
-		}
-	};
-	
-	const handleBackdropClick = (event: MouseEvent) => {
-		if (event.target === event.currentTarget) {
-			close();
-		}
+		if (e.key === 'Escape') close();
+		if (e.key === 'ArrowRight') next();
+		if (e.key === 'ArrowLeft') prev();
 	};
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window on:keydown={onKey} />
 
 {#if isOpen}
-	<div class="lightbox-overlay" on:click={handleBackdropClick} role="dialog" aria-modal="true">
-		<div class="lightbox-container">
-			<button class="close-button" on:click={close} aria-label="Close lightbox">
-				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<line x1="18" y1="6" x2="6" y2="18"></line>
-					<line x1="6" y1="6" x2="18" y2="18"></line>
-				</svg>
+	<div class="lightbox" on:mousedown={(e) => e.target === e.currentTarget && close()}>
+		<button class="lightbox__close" on:click={close} type="button" aria-label="Close">
+			<Icon name="x" size={22} stroke={2.1} />
+		</button>
+
+		{#if images.length > 1}
+			<button class="lightbox__nav lightbox__nav--prev" on:click={prev} type="button" aria-label="Previous">
+				<Icon name="back" size={24} stroke={2.1} />
 			</button>
-			
+			<button class="lightbox__nav lightbox__nav--next" on:click={next} type="button" aria-label="Next">
+				<Icon name="arrow" size={24} stroke={2.1} />
+			</button>
+		{/if}
+
+		<figure class="lightbox__fig">
+			<img src={imageSrc} alt={imageAlt} />
+			{#if imageAlt}<figcaption>{imageAlt}</figcaption>{/if}
 			{#if images.length > 1}
-				<button class="nav-button prev" on:click={prevImage} aria-label="Previous image">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<polyline points="15,18 9,12 15,6"></polyline>
-					</svg>
-				</button>
+				<span class="lightbox__count">{currentIndex + 1} / {images.length}</span>
 			{/if}
-			
-			<div class="image-container">
-				<img src={imageSrc} alt={imageAlt} />
-				
-				{#if images.length > 1}
-					<div class="image-counter">
-						{currentIndex + 1} / {images.length}
-					</div>
-				{/if}
-			</div>
-			
-			{#if images.length > 1}
-				<button class="nav-button next" on:click={nextImage} aria-label="Next image">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<polyline points="9,18 15,12 9,6"></polyline>
-					</svg>
-				</button>
-			{/if}
-		</div>
+		</figure>
 	</div>
 {/if}
 
 <style>
-	.lightbox-overlay {
+	.lightbox {
 		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-color: rgba(0, 0, 0, 0.9);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 1000;
-		animation: fadeIn 0.2s ease-out;
+		inset: 0;
+		z-index: 100;
+		display: grid;
+		place-items: center;
+		padding: 48px;
+		background: oklch(0.15 0.02 265 / 0.84);
+		backdrop-filter: blur(8px);
+		animation: lbIn 0.2s ease both;
 	}
-	
-	.lightbox-container {
-		position: relative;
-		max-width: 95vw;
-		max-height: 95vh;
+	@keyframes lbIn { from { opacity: 0; } to { opacity: 1; } }
+	.lightbox__fig {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-	}
-	
-	.image-container {
-		position: relative;
+		gap: 12px;
 		max-width: 100%;
 		max-height: 100%;
+		animation: lbZoom 0.26s cubic-bezier(0.16, 0.9, 0.3, 1) both;
 	}
-	
-	.image-container img {
+	@keyframes lbZoom { from { transform: scale(0.94); opacity: 0; } to { transform: none; opacity: 1; } }
+	.lightbox__fig img {
 		max-width: 100%;
-		max-height: 95vh;
-		object-fit: contain;
-		border-radius: 8px;
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+		max-height: 78vh;
+		border-radius: var(--r-md);
+		box-shadow: var(--shadow-lg);
 	}
-	
-	.close-button {
-		position: absolute;
-		top: -50px;
-		right: 0;
-		background: rgba(255, 255, 255, 0.1);
-		border: none;
-		color: white;
-		padding: 12px;
+	.lightbox__fig figcaption {
+		color: oklch(0.9 0.01 265);
+		font-size: 0.88rem;
+	}
+	.lightbox__count {
+		font-family: var(--font-mono);
+		font-size: 0.78rem;
+		color: oklch(0.8 0.01 265);
+	}
+	.lightbox__close,
+	.lightbox__nav {
+		position: fixed;
+		display: grid;
+		place-items: center;
+		width: 48px;
+		height: 48px;
 		border-radius: 50%;
-		cursor: pointer;
-		transition: background-color 0.2s ease;
-		z-index: 1001;
+		color: #fff;
+		background: oklch(0.3 0.02 265 / 0.6);
+		transition: background 0.16s, transform 0.16s;
 	}
-	
-	.close-button:hover {
-		background: rgba(255, 255, 255, 0.2);
-	}
-	
-	.nav-button {
-		position: absolute;
-		top: 50%;
-		transform: translateY(-50%);
-		background: rgba(255, 255, 255, 0.1);
-		border: none;
-		color: white;
-		padding: 16px;
-		border-radius: 50%;
-		cursor: pointer;
-		transition: background-color 0.2s ease;
-		z-index: 1001;
-	}
-	
-	.nav-button:hover {
-		background: rgba(255, 255, 255, 0.2);
-	}
-	
-	.nav-button.prev {
-		left: -80px;
-	}
-	
-	.nav-button.next {
-		right: -80px;
-	}
-	
-	.image-counter {
-		position: absolute;
-		bottom: -40px;
-		left: 50%;
-		transform: translateX(-50%);
-		background: rgba(0, 0, 0, 0.7);
-		color: white;
-		padding: 8px 16px;
-		border-radius: 20px;
-		font-size: 14px;
-		font-weight: 500;
-	}
-	
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-	
-	@media (max-width: 768px) {
-		.nav-button.prev {
-			left: 10px;
-		}
-		
-		.nav-button.next {
-			right: 10px;
-		}
-		
-		.close-button {
-			top: 10px;
-			right: 10px;
-		}
-		
-		.image-counter {
-			bottom: 10px;
-		}
-	}
+	.lightbox__close:hover,
+	.lightbox__nav:hover { background: oklch(0.4 0.02 265 / 0.8); }
+	.lightbox__close { top: 24px; right: 24px; }
+	.lightbox__nav--prev { left: 24px; top: 50%; transform: translateY(-50%); }
+	.lightbox__nav--next { right: 24px; top: 50%; transform: translateY(-50%); }
+	.lightbox__nav--prev:hover { transform: translateY(-50%) scale(1.08); }
+	.lightbox__nav--next:hover { transform: translateY(-50%) scale(1.08); }
 </style>

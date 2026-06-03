@@ -1,112 +1,83 @@
 <script lang="ts">
 	import { token, editCommentModal } from '../../lib/stores';
 	import ImageUpload from './ImageUpload.svelte';
-	let title = '';
+	import Icon from './Icon.svelte';
+
 	export let comment: any = {};
 	let showImageUpload = false;
 
 	const editComment = async () => {
 		const response = await fetch(`/comments/${comment.id}`, {
 			method: 'PUT',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${$token}`
-			},
+			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${$token}` },
 			body: JSON.stringify({ content: comment.content, commentId: comment.id })
 		});
-
-		if (response.ok) {
-			$editCommentModal = false;
-		} else {
-			// Handle error
-		}
+		if (response.ok) $editCommentModal = false;
 	};
 
-	const closeModal = () => {
-		$editCommentModal = null;
-	};
+	const closeModal = () => ($editCommentModal = false);
 
-	const handleImageUploaded = (image: any) => {
-		console.log('Image uploaded:', image);
-		// Image upload handled by the component
-	};
-    
+	const handleImageUploaded = (image: any) => {};
 	const handleInsertImage = (data: { markdown: string }) => {
 		const { markdown } = data;
-		// Insert the image markdown at the current cursor position
-		if (comment.content) {
-			comment.content = comment.content + '\n' + markdown;
-		} else {
-			comment.content = markdown;
-		}
-
-		// Focus the textarea
+		comment.content = comment.content ? comment.content + '\n' + markdown : markdown;
 		setTimeout(() => {
-			const textarea = document.querySelector('#title') as HTMLTextAreaElement;
+			const textarea = document.querySelector('#editContent') as HTMLTextAreaElement;
 			if (textarea) {
 				textarea.focus();
 				textarea.setSelectionRange(comment.content.length, comment.content.length);
 			}
 		}, 0);
 	};
+
+	const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeModal();
 </script>
 
-<div class="modalBackground">
-	<div class="modal">
-		<h2>Edit Comment</h2>
-		<form on:submit|preventDefault={editComment}>
-			<label for="title">Content</label>
-			<textarea id="title" bind:value={comment.content} required></textarea>
+<svelte:window on:keydown={onKey} />
 
-			<div class="form-actions">
-				<button
-					type="button"
-					class="image-toggle"
-					on:click={() => (showImageUpload = !showImageUpload)}
-				>
-					{showImageUpload ? 'Hide' : 'Add'} Images
-				</button>
-				<button type="submit">Edit</button>
-				<button type="button" on:click={closeModal}>Cancel</button>
+<div class="scrim" on:mousedown={(e) => e.target === e.currentTarget && closeModal()}>
+	<div class="modal modal--md" role="dialog" aria-modal="true">
+		<div class="modal__head">
+			<div>
+				<h2 class="modal__title">Edit reply</h2>
+				<p class="modal__sub">Fix a typo, sharpen a point.</p>
+			</div>
+			<button class="modal__close" on:click={closeModal} type="button"><Icon name="x" size={18} stroke={2.1} /></button>
+		</div>
+
+		<form on:submit|preventDefault={editComment}>
+			<div class="modal__body">
+				<label class="field field--block">
+					<span class="field__label">Content</span>
+					<textarea id="editContent" rows="7" bind:value={comment.content} required></textarea>
+				</label>
+				{#if showImageUpload}
+					<ImageUpload
+						commentId={comment.id}
+						onImageUploaded={handleImageUploaded}
+						onImageInserted={handleInsertImage}
+						multiple={true}
+						buttonText="Upload Images"
+					/>
+				{/if}
 			</div>
 
-			{#if showImageUpload}
-				<ImageUpload
-					commentId={comment.id}
-					onImageUploaded={handleImageUploaded}
-					onImageInserted={handleInsertImage}
-					multiple={true}
-					buttonText="Upload Images"
-				/>
-			{/if}
+			<div class="modal__foot">
+				<button type="button" class="composer__tool" class:is-on={showImageUpload} on:click={() => (showImageUpload = !showImageUpload)}>
+					<Icon name="image" size={16} stroke={2} /> Add images
+				</button>
+				<span class="toolbar-spacer"></span>
+				<button type="button" class="btn btn--ghost" on:click={closeModal}>Cancel</button>
+				<button type="submit" class="btn btn--primary" disabled={!comment.content?.trim()}><Icon name="check" size={16} stroke={2.1} /><span>Save changes</span></button>
+			</div>
 		</form>
 	</div>
 </div>
 
 <style>
-	textarea {
-		width: 100%;
-		height: 100px;
-	}
-
-	.form-actions {
-		display: flex;
-		gap: 10px;
-		align-items: center;
-		margin-top: 10px;
-	}
-
-	.image-toggle {
-		background: #28a745;
-		color: white;
-		border: none;
-		padding: 8px 16px;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 14px;
-	}
-
-	.image-toggle:hover {
-		background: #218838;
+	.modal__body textarea {
+		resize: vertical;
+		min-height: 120px;
+		line-height: 1.6;
 	}
 </style>
