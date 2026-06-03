@@ -48,6 +48,62 @@ export const POST = async ({ request, locals }) => {
     }
 }
 
+export const PUT = async ({ request, locals }) => {
+    // Check if the user is authenticated
+    if (!locals.user) {
+        return new Response(JSON.stringify({ success: false, message: 'User not authenticated' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    try {
+        const { threadId, title } = await request.json();
+
+        if (!title || typeof title !== 'string' || title.trim().length === 0) {
+            return new Response(JSON.stringify({ success: false, message: 'Title is required' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Verify the thread exists and belongs to the user
+        const thread = await db.query.threadsTable.findFirst({
+            where: eq(threadsTable.id, Number(threadId))
+        });
+
+        if (!thread) {
+            return new Response(JSON.stringify({ success: false, message: 'Thread not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        if (thread.userId !== Number(locals.user.id)) {
+            return new Response(JSON.stringify({ success: false, message: 'Unauthorized to edit this thread' }), {
+                status: 403,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        const [updated] = await db.update(threadsTable)
+            .set({ title: title.trim(), updatedAt: new Date() })
+            .where(eq(threadsTable.id, Number(threadId)))
+            .returning();
+
+        return new Response(JSON.stringify({ success: true, thread: updated }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        console.error('Error updating thread:', error);
+        return new Response(JSON.stringify({ success: false, message: 'Error updating thread' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
+
 export const GET = async ({ locals }) => {
     // Check if the user is authenticated
     if (!locals.user) {

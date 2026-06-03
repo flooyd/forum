@@ -1,12 +1,33 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { token, createThreadModal, threads, originalThreads, user } from '../../lib/stores';
 	import ImageUpload from './ImageUpload.svelte';
 	import Icon from './Icon.svelte';
+	import Tag from './Tag.svelte';
 
 	let title = '';
 	let initialComment = '';
 	let uploadedImages: any[] = [];
 	let showImageUpload = false;
+	let allTags: any[] = [];
+	let selectedTagIds: number[] = [];
+
+	onMount(async () => {
+		try {
+			const response = await fetch('/tags', {
+				method: 'GET',
+				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${$token}` }
+			});
+			if (response.ok) allTags = await response.json();
+		} catch (error) {
+			console.error('Failed to load tags:', error);
+		}
+	});
+
+	const toggleTag = (id: number) =>
+		(selectedTagIds = selectedTagIds.includes(id)
+			? selectedTagIds.filter((x) => x !== id)
+			: [...selectedTagIds, id]);
 
 	const createThread = async () => {
 		const response = await fetch('/threads', {
@@ -19,12 +40,32 @@
 			const newThread = data.thread[0];
 			newThread.avatar = $user.avatar;
 			newThread.displayName = $user.displayName;
-			newThread.tags = [];
+			newThread.tags = await applyTags(newThread.id);
 			$threads = [newThread, ...$threads];
 			$originalThreads = [JSON.parse(JSON.stringify(newThread)), ...JSON.parse(JSON.stringify($originalThreads))];
 			if (initialComment.trim()) await addInitialComment(newThread.id);
 			closeModal();
 		}
+	};
+
+	const applyTags = async (threadId: number) => {
+		const applied: any[] = [];
+		for (const tagId of selectedTagIds) {
+			try {
+				const response = await fetch(`/thread-tags/${threadId}`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${$token}` },
+					body: JSON.stringify({ tagId })
+				});
+				if (response.ok) {
+					const data = await response.json();
+					if (data.tag) applied.push(data.tag);
+				}
+			} catch (error) {
+				console.error('Failed to add tag to thread:', error);
+			}
+		}
+		return applied;
 	};
 
 	const addInitialComment = async (threadId: number) => {
@@ -56,6 +97,7 @@
 		initialComment = '';
 		uploadedImages = [];
 		showImageUpload = false;
+		selectedTagIds = [];
 	};
 
 	const handleImageUploaded = (image: any) => (uploadedImages = [...uploadedImages, image]);
@@ -105,6 +147,17 @@
 					<span class="field__label">Opening post <span class="field__opt">optional</span></span>
 					<textarea id="initialComment" rows="5" bind:value={initialComment} placeholder="Set the context. What's your take, your question, the thing you built?"></textarea>
 				</label>
+
+				{#if allTags.length}
+					<div class="field field--block">
+						<span class="field__label">Tags <span class="field__opt">optional</span></span>
+						<div class="tag-pick">
+							{#each allTags as tag}
+								<Tag {tag} active={selectedTagIds.includes(tag.id)} interactive onClick={() => toggleTag(tag.id)} />
+							{/each}
+						</div>
+					</div>
+				{/if}
 
 				{#if showImageUpload}
 					<div>
